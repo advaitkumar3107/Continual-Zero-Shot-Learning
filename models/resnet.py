@@ -111,8 +111,8 @@ class ResNet(nn.Module):
                  no_max_pool=False,
                  shortcut_type='B',
                  widen_factor=1.0,
-                 n_classes=400):
-        super().__init__()
+                 n_classes=400, **kwargs):
+        super().__init__(**kwargs)
 
         block_inplanes = [int(x * widen_factor) for x in block_inplanes]
 
