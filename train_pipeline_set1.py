@@ -17,7 +17,9 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
+from models import nets, resnext
 from nets import *
+from resnext import generate_model
 from video_data_loader import video_dataset
 
 
@@ -119,13 +121,15 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_classes (int): Number of classes in the data
             num_epochs (int, optional): Number of epochs to train for.
     """
-    model = ConvLSTM(
+    #model = ConvLSTM(
         latent_dim=512,
         lstm_layers=1,
         hidden_dim=1024,
         bidirectional=True,
         attention=True,
     )
+    resnext_model = torch.load('saved_weights/resnext_101_hmdb51.pth')
+    model = 
     generator = Modified_Generator(semantic_dim, noise_dim)
     discriminator = Discriminator(input_dim=input_dim)
     classifier = Classifier(num_classes = num_classes)
@@ -175,11 +179,11 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
-    optimizer = torch.optim.Adam(list(model.parameters())+list(classifier.parameters()), lr=lr)
+    optimizer = torch.optim.Adam(list(classifier.parameters()), lr=lr)
 
     adversarial_loss = torch.nn.BCELoss().to(device)    
 
-    att = np.load("../npy_files/seen_semantic_51.npy")
+    att = np.load("npy_files/seen_semantic_51.npy")
     att = torch.tensor(att).cuda()    
 
     if args.train == 1:
@@ -191,7 +195,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_corrects = 0.0
             #gen_running_corrects = 0.0
 
-                model.train()
+                model.eval()
             #generator.train()
             #discriminator.train()
                 classifier.train()
