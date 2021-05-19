@@ -24,8 +24,7 @@ from opts import parse_opts
 from model import generate_model, load_pretrained_model
 
 
-opt = parse_opts()
-model = generate_model(opt)
+model = generate_model()
 model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
 
 model = nn.Sequential(*list(model.children())[:-1])
