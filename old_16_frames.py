@@ -16,11 +16,12 @@ class Path(object):
             # folder that contains class labels
             # /home/dipesh/Ram/ritesh/data/UCF-101/UCF-101
             #/home/dipesh/ritesh/data/UCF-101/UCF-101
-            root_dir = "../../data/UCF-101/UCF-101"
-            # root_dir = "../data/UCF-101/small_ucf101"
+            #root_dir = "../../data/UCF-101/UCF-101"
+            root_dir = "../data/UCF-101/small_ucf101"
 
             # Save preprocess data into output_dir
-            output_dir = "/home/SharedData/fabio/zsl_cgan/ucf_split1" # if not preprocessing
+            #output_dir = "/home/SharedData/fabio/zsl_cgan/ucf_split1" # if not preprocessing
+            output_dir = '/home/SharedData/fabio/Generalised Zero Shot Learning/ucf_split1' # if not preprocessing
             return root_dir, output_dir
 
         elif database == 'hmdb51':
