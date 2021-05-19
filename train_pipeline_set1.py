@@ -17,10 +17,10 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
-from models import nets, resnext
-from nets import *
-from resnext import generate_model
+from models.nets import *
 from video_data_loader import video_dataset
+from model import generate_model, load_pretrained_model
+
 
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
@@ -122,14 +122,16 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_epochs (int, optional): Number of epochs to train for.
     """
     #model = ConvLSTM(
-        latent_dim=512,
-        lstm_layers=1,
-        hidden_dim=1024,
-        bidirectional=True,
-        attention=True,
-    )
-    resnext_model = torch.load('saved_weights/resnext_101_hmdb51.pth')
-    model = 
+    #    latent_dim=512,
+    #    lstm_layers=1,
+    #    hidden_dim=1024,
+    #    bidirectional=True,
+    #    attention=True,
+    #)
+
+    model = generate_model()
+    model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
+ 
     generator = Modified_Generator(semantic_dim, noise_dim)
     discriminator = Discriminator(input_dim=input_dim)
     classifier = Classifier(num_classes = num_classes)
@@ -149,6 +151,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     else:
         print("Training {} from scratch...".format(modelName))
+        model = nn.Sequential(*list(model.children())[:-1])
+        model = model.cuda()
 
 
     print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters()) / 1000000.0))
@@ -277,7 +281,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             running_g_loss = 0.0
             gen_running_corrects = 0.0
 
-            model.train()
+            model.eval()
             generator.train()
             discriminator.train()
             classifier.train()
