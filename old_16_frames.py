@@ -16,12 +16,11 @@ class Path(object):
             # folder that contains class labels
             # /home/dipesh/Ram/ritesh/data/UCF-101/UCF-101
             #/home/dipesh/ritesh/data/UCF-101/UCF-101
-            #root_dir = "../../data/UCF-101/UCF-101"
-            root_dir = "../data/UCF-101/small_ucf101"
+            root_dir = "../data/UCF-101/UCF-101"
+            # root_dir = "../data/UCF-101/small_ucf101"
 
             # Save preprocess data into output_dir
-            #output_dir = "/home/SharedData/fabio/zsl_cgan/ucf_split1" # if not preprocessing
-            output_dir = '/home/SharedData/fabio/Generalised Zero Shot Learning/ucf_split1' # if not preprocessing
+            output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if not preprocessing
             return root_dir, output_dir
 
         elif database == 'hmdb51':
@@ -163,7 +162,15 @@ class VideoDataset(Dataset):
             # val_dir = os.path.join(self.output_dir, 'val', file)
             # test_dir = os.path.join(self.output_dir, 'test', file)
 
+            if not os.path.exists(os.path.join(self.output_dir, 'complete_data')):
+                os.mkdir(os.path.join(self.output_dir, 'complete_data'))
+
             save_dir = os.path.join(self.output_dir, 'complete_data', file)
+
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
+
+            #save_dir = os.path.join(self.output_dir, 'train', file) 
 
             # if not os.path.exists(train_dir):
             #     os.mkdir(train_dir)
@@ -259,6 +266,7 @@ class VideoDataset(Dataset):
 
     def crop(self, buffer, clip_len, crop_size):
         # randomly select time index for temporal jittering
+        print(buffer.shape)
         time_index = np.random.randint(buffer.shape[0] - clip_len)
         #time_index = np.random.randint(buffer.shape[0])
         # Randomly select start indices in order to crop the video
@@ -282,7 +290,7 @@ class VideoDataset(Dataset):
 
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
-    train_data = VideoDataset(dataset='ucf101', split='complete_data', clip_len=16, preprocess=True)
+    train_data = VideoDataset(dataset='ucf101', split='complete_data', clip_len=64, preprocess=True)
     train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=4)
 
     for i, sample in enumerate(train_loader):
