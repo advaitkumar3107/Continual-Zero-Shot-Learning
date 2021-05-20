@@ -207,11 +207,11 @@ class VideoDataset(Dataset):
 
         # Make sure splited video has at least 16 frames
         EXTRACT_FREQUENCY = 4
-        if frame_count // EXTRACT_FREQUENCY <= 16:
+        if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
             EXTRACT_FREQUENCY -= 1
-            if frame_count // EXTRACT_FREQUENCY <= 16:
+            if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
                 EXTRACT_FREQUENCY -= 1
-                if frame_count // EXTRACT_FREQUENCY <= 16:
+                if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
                     EXTRACT_FREQUENCY -= 1
 
         count = 0
