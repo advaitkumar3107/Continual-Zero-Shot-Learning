@@ -18,10 +18,15 @@ from matplotlib import pyplot as plt
 import matplotlib
 import seaborn as sns
 import time
-from nets import *
+from models.nets import *
+from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
 
-model_path = "run/pipeline_incremental/Bi-LSTM-ucf101_increment_0_epoch-199.pth.tar"
+#model_path = "run/pipeline_incremental/Bi-LSTM-ucf101_increment_0_epoch-199.pth.tar"
+model = generate_model()
+model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
+model = nn.Sequential(*list(model.children())[:-1])
+
 att = np.load("../npy_files/seen_semantic_51.npy")
 att = torch.tensor(att).cuda()    
 
@@ -29,28 +34,28 @@ att = torch.tensor(att).cuda()
 semantic_dim = 300
 noise_dim = 1024
 
-total_classes = 50
+total_classes = 10
 all_classes = np.arange(total_classes)
 
 
-model = ConvLSTM(
-        latent_dim=512,
-        lstm_layers=1,
-        hidden_dim=1024,
-        bidirectional=True,
-        attention=True,
-    )
+#model = ConvLSTM(
+        #latent_dim=512,
+        #lstm_layers=1,
+        #hidden_dim=1024,
+        #bidirectional=True,
+        #attention=True,
+    #)
 
 generator = Modified_Generator(semantic_dim, noise_dim)
 
-checkpoint = torch.load(model_path, map_location = lambda storage, loc: storage)
-model.load_state_dict(checkpoint['extractor_state_dict'])
-generator.load_state_dict(checkpoint['generator_state_dict'])
+#checkpoint = torch.load(model_path, map_location = lambda storage, loc: storage)
+#model.load_state_dict(checkpoint['extractor_state_dict'])
+#generator.load_state_dict(checkpoint['generator_state_dict'])
 
 model = model.cuda()
 generator = generator.cuda()
 
-train_dataset = old_video_dataset(train = False, classes = all_classes[:total_classes], num_classes = 50)
+train_dataset = old_video_dataset(train = False, classes = all_classes[:total_classes], num_classes = 10)
 train_dataloader = DataLoader(train_dataset, batch_size = 100, shuffle = False, num_workers = 4)
 
 for i, (_, inputs, labels) in enumerate(train_dataloader):
@@ -65,17 +70,17 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
 
     convlstm_feats = model(inputs)
     convlstm_feats = model(inputs).contiguous().view(convlstm_feats.size(0), -1)
-    generator_feats = generator(semantic_true.float(), noise)
+    #generator_feats = generator(semantic_true.float(), noise)
     
     if (i == 0):
         convlstm_feat = convlstm_feats
         #convlstm_feat = inputs
-        generator_feat = generator_feats
+        #generator_feat = generator_feats
 
     else:
         convlstm_feat = torch.cat((convlstm_feat, convlstm_feats), 0)
         #convlstm_feat = torch.cat((convlstm_feat, inputs), 0)
-        generator_feat = torch.cat((generator_feat, generator_feats), 0)
+        #generator_feat = torch.cat((generator_feat, generator_feats), 0)
 
 
 #mask_feat_path = "/home/SharedData/fabio/zsl_cgan/new_model/masked_feat_1629x1280.npy"
@@ -85,21 +90,21 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
 #non_mask_feat = np.load(non_mask_feat_path)
 
 convlstm_feat = convlstm_feat.squeeze_(0)
-generator_feat = generator_feat.squeeze_(0)
+#generator_feat = generator_feat.squeeze_(0)
 
 convlstm_feat = convlstm_feat.cpu()
-generator_feat = generator_feat.cpu()
+#generator_feat = generator_feat.cpu()
 
 convlstm_feat = convlstm_feat.detach().numpy()
-generator_feat = generator_feat.detach().numpy()
+#generator_feat = generator_feat.detach().numpy()
 
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
-print("Generator feature shape {}".format(generator_feat.shape))
+#print("Generator feature shape {}".format(generator_feat.shape))
 
-all_features = np.concatenate((convlstm_feat, generator_feat), axis = 0)
-#all_features = convlstm_feat
+#all_features = np.concatenate((convlstm_feat, generator_feat), axis = 0)
+all_features = convlstm_feat
 dataset_label = np.zeros((all_features.shape[0],1))
-dataset_label[convlstm_feat.shape[0]:] = 1
+dataset_label[:convlstm_feat.shape[0]] = 1
 
 #for i in range(total_classes):
     #dataset_label[10*i:10*i+10] = i
