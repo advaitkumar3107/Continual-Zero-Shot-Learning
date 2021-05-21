@@ -30,7 +30,7 @@ model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
 model = nn.Sequential(*list(model.children())[:-1])
 model = model.cuda()
 
-inputs = torch.ones((1, 3, 64, 224, 224)).cuda()
+inputs = torch.ones((1, 3, 64, 112, 112)).cuda()
 outputs = model(inputs)
 
 outputs = outputs.view(outputs.shape[0], -1)
