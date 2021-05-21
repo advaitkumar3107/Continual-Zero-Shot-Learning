@@ -208,7 +208,7 @@ class VideoDataset(Dataset):
  
         # Make sure splitted video has at least Clip length frames
         if frame_count < self.clip_len:
-            print('Exceeding')
+           # print('Exceeding')
             num_rep = np.ceil(self.clip_len/frame_count)
             exceed = True 
             EXTRACT_FREQUENCY = 1           
