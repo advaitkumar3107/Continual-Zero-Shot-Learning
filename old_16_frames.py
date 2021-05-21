@@ -68,7 +68,7 @@ class VideoDataset(Dataset):
 
         if (not self.check_preprocess()) or preprocess:
             print('Preprocessing of {} dataset, this will take long, but it will be done only once.'.format(dataset))
-            self.preprocess()
+            #self.preprocess()
 
         # Obtain all the filenames of files inside all the class folders
         # Going through each class folder one at a time
@@ -297,9 +297,8 @@ class VideoDataset(Dataset):
 
     def crop(self, buffer, clip_len, crop_size):
         # randomly select time index for temporal jittering
-        print(buffer.shape)
-        #time_index = np.random.randint(buffer.shape[0] - clip_len)
-        time_index  = 0
+        time_index = np.random.randint(buffer.shape[0] - clip_len)
+        #time_index  = 0
         #time_index = np.random.randint(buffer.shape[0])
         # Randomly select start indices in order to crop the video
         height_index = np.random.randint(buffer.shape[1] - crop_size)
@@ -313,7 +312,7 @@ class VideoDataset(Dataset):
                  width_index:width_index + crop_size, :]
 
         #buffer = buffer[time_index:, height_index:height_index + crop_size, width_index:width_index + crop_size, :]
-
+        print(buffer.shape)
         return buffer
 
 
@@ -322,7 +321,7 @@ class VideoDataset(Dataset):
 
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
-    train_data = VideoDataset(dataset='ucf101', split='complete_data', clip_len=64, preprocess=True)
+    train_data = VideoDataset(dataset='ucf101', split='complete_data', clip_len=64, preprocess=False)
     train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=4)
 
     for i, sample in enumerate(train_loader):
