@@ -12,13 +12,19 @@ def copytree(src, dst, symlinks=False, ignore=None):
             shutil.copy2(s, d)
 
 
-source_file = "/home/SharedData/fabio/data/UCF-101/split/train"
-target_file = "/home/SharedData/fabio/zsl_cgan/ucf_split1"
+source_file = "/home/SharedData/fabio/zsl_cgan/64_frame_split/complete_data"
+target_file = "/home/SharedData/fabio/Generalised Zero Shot Learning/data"
 
 train_test_split = 0.8
 
 train_path = target_file + "/train"
 test_path = target_file + "/test"
+
+if not os.path.exists(target_file):
+    print("Creating new path for target")
+    os.mkdir(target_file)
+
+time.sleep(2)
 
 if os.path.exists(train_path):
     print("Deleting Existing Train Folder")
