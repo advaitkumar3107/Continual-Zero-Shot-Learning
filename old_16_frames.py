@@ -4,6 +4,7 @@ import torch
 import cv2
 import numpy as np
 from torch.utils.data import Dataset
+import skvideo.io
 # from mypath import Path
 
 label_txt_file = 'ucf_labels.txt'
@@ -204,31 +205,61 @@ class VideoDataset(Dataset):
         frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+ 
+        # Make sure splitted video has at least Clip length frames
+        if frame_count < self.clip_len:
+            print('Exceeding')
+            num_rep = np.ceil(self.clip_len/frame_count)
+            exceed = True 
+            EXTRACT_FREQUENCY = 1           
 
-        # Make sure splited video has at least 16 frames
-        EXTRACT_FREQUENCY = 4
-        if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
-            EXTRACT_FREQUENCY -= 1
+        else:
+            EXTRACT_FREQUENCY = 4
+            exceed = False
             if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
                 EXTRACT_FREQUENCY -= 1
                 if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
                     EXTRACT_FREQUENCY -= 1
+                    if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
+                        EXTRACT_FREQUENCY -= 1
+
 
         count = 0
         i = 0
         retaining = True
 
-        while (count < frame_count and retaining):
-            retaining, frame = capture.read()
-            if frame is None:
-                continue
+        if exceed:
+            for _ in range(int(num_rep)):
+                
+                while (count < frame_count and retaining):
+                    retaining, frame = capture.read()
+                    if frame is None:
+                        continue
 
-            if count % EXTRACT_FREQUENCY == 0:
-                if (frame_height != self.resize_height) or (frame_width != self.resize_width):
-                    frame = cv2.resize(frame, (self.resize_width, self.resize_height))
-                cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
-                i += 1
-            count += 1
+                    if count % EXTRACT_FREQUENCY == 0:
+                        if (frame_height != self.resize_height) or (frame_width != self.resize_width):
+                            frame = cv2.resize(frame, (self.resize_width, self.resize_height))
+                        cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
+                        i += 1
+                    count += 1
+
+                capture = cv2.VideoCapture(os.path.join(self.root_dir, action_name, video)) 
+                count = 0
+                retaining = True
+
+                
+        else:
+            while (count < frame_count and retaining):
+                retaining, frame = capture.read()
+                if frame is None:
+                    continue
+
+                if count % EXTRACT_FREQUENCY == 0:
+                    if (frame_height != self.resize_height) or (frame_width != self.resize_width):
+                        frame = cv2.resize(frame, (self.resize_width, self.resize_height))
+                    cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
+                    i += 1
+                count += 1
 
         # Release the VideoCapture once it is no longer needed
         capture.release()
@@ -267,7 +298,8 @@ class VideoDataset(Dataset):
     def crop(self, buffer, clip_len, crop_size):
         # randomly select time index for temporal jittering
         print(buffer.shape)
-        time_index = np.random.randint(buffer.shape[0] - clip_len)
+        #time_index = np.random.randint(buffer.shape[0] - clip_len)
+        time_index  = 0
         #time_index = np.random.randint(buffer.shape[0])
         # Randomly select start indices in order to crop the video
         height_index = np.random.randint(buffer.shape[1] - crop_size)
