@@ -21,7 +21,8 @@ class Path(object):
             # root_dir = "../data/UCF-101/small_ucf101"
 
             # Save preprocess data into output_dir
-            output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if not preprocessing
+            output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if processing
+            #output_dir = "/home/SharedData/fabio/Generalised Zero Shot Learning/data" # if not preprocessing
             return root_dir, output_dir
 
         elif database == 'hmdb51':
@@ -105,6 +106,8 @@ class VideoDataset(Dataset):
     def __getitem__(self, index):
         # Loading and preprocessing.
         buffer = self.load_frames(self.fnames[index])
+        if (buffer.shape[0] < 64):
+            print(self.fnames[index])
         buffer = self.crop(buffer, self.clip_len, self.crop_size)
         labels = np.array(self.label_array[index])
 
@@ -210,12 +213,12 @@ class VideoDataset(Dataset):
         if frame_count < self.clip_len:
            # print('Exceeding')
             num_rep = np.ceil(self.clip_len/frame_count)
-            exceed = True 
+            exceed = 1 
             EXTRACT_FREQUENCY = 1           
 
         else:
             EXTRACT_FREQUENCY = 4
-            exceed = False
+            exceed = 0
             if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
                 EXTRACT_FREQUENCY -= 1
                 if frame_count // EXTRACT_FREQUENCY <= self.clip_len:
@@ -228,7 +231,7 @@ class VideoDataset(Dataset):
         i = 0
         retaining = True
 
-        if exceed:
+        if exceed == 1:
             for _ in range(int(num_rep)):
                 
                 while (count < frame_count and retaining):
@@ -236,11 +239,10 @@ class VideoDataset(Dataset):
                     if frame is None:
                         continue
 
-                    if count % EXTRACT_FREQUENCY == 0:
-                        if (frame_height != self.resize_height) or (frame_width != self.resize_width):
-                            frame = cv2.resize(frame, (self.resize_width, self.resize_height))
-                        cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
-                        i += 1
+                    if (frame_height != self.resize_height) or (frame_width != self.resize_width):
+                        frame = cv2.resize(frame, (self.resize_width, self.resize_height))
+                    cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
+                    i += 1
                     count += 1
 
                 capture = cv2.VideoCapture(os.path.join(self.root_dir, action_name, video)) 
@@ -260,6 +262,9 @@ class VideoDataset(Dataset):
                     cv2.imwrite(filename=os.path.join(save_dir, video_filename, '0000{}.jpg'.format(str(i))), img=frame)
                     i += 1
                 count += 1
+
+        if (exceed == 1):
+            print('New no. of frames {}'.format(i))
 
         # Release the VideoCapture once it is no longer needed
         capture.release()
@@ -297,9 +302,15 @@ class VideoDataset(Dataset):
 
     def crop(self, buffer, clip_len, crop_size):
         # randomly select time index for temporal jittering
-        time_index = np.random.randint(buffer.shape[0] - clip_len)
-        #time_index  = 0
-        #time_index = np.random.randint(buffer.shape[0])
+        #print(buffer.shape[0])
+        if (buffer.shape[0] <= clip_len):
+            #print(buffer.shape[0])
+            time_index = 0
+        else:
+            #print('Buffer shape {} Clip_len {}'.format(buffer.shape[0], clip_len))
+            time_index = np.random.randint(buffer.shape[0] - clip_len)
+            #time_index = np.random.randint(buffer.shape[0])
+
         # Randomly select start indices in order to crop the video
         height_index = np.random.randint(buffer.shape[1] - crop_size)
         width_index = np.random.randint(buffer.shape[2] - crop_size)
@@ -307,12 +318,21 @@ class VideoDataset(Dataset):
         # Crop and jitter the video using indexing. The spatial crop is performed on
         # the entire array, so each frame is cropped in the same location. The temporal
         # jitter takes place via the selection of consecutive frames
-        buffer = buffer[time_index:time_index + clip_len,
-                 height_index:height_index + crop_size,
-                 width_index:width_index + crop_size, :]
+        
+        if (time_index == 0):
+            buffer = buffer[:clip_len, height_index:height_index + crop_size, width_index:width_index + crop_size, :]
+ 
+        else:
+            buffer = buffer[time_index:time_index + clip_len,
+                     height_index:height_index + crop_size,
+                     width_index:width_index + crop_size, :]
 
         #buffer = buffer[time_index:, height_index:height_index + crop_size, width_index:width_index + crop_size, :]
-        print(buffer.shape)
+        #print(buffer.shape)
+        #if (buffer.shape[0] != 64):
+            #print('Time Index {}'.format(time_index))
+            #print('Clip Len {}'.format(clip_len))
+            #print(buffer.shape)
         return buffer
 
 
@@ -322,13 +342,10 @@ class VideoDataset(Dataset):
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
     train_data = VideoDataset(dataset='ucf101', split='complete_data', clip_len=64, preprocess=False)
-    train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=4)
+    train_loader = DataLoader(train_data, batch_size=100, shuffle=False, num_workers=8)
 
     for i, sample in enumerate(train_loader):
         inputs = sample[0]
-        labels = sample[1]
-        print(inputs.size())
-        print(labels)
-
-        if i == 1:
-            break
+        #labels = sample[1]
+        print(inputs.shape)
+        #print(labels)
