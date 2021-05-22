@@ -24,7 +24,7 @@ from video_data_loader import video_dataset, old_video_dataset
 
 #model_path = "run/pipeline_incremental/Bi-LSTM-ucf101_increment_0_epoch-199.pth.tar"
 model = generate_model()
-model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
+model = load_pretrained_model(model, 'saved_weights/resnet_18.pth')
 model = nn.Sequential(*list(model.children())[:-1])
 
 att = np.load("../npy_files/seen_semantic_51.npy")
@@ -58,13 +58,14 @@ model = model.cuda()
 #model = nn.parallel.replicate(model, [0,1,2,3])
 
 train_dataset = old_video_dataset(train = False, classes = all_classes[:total_classes], num_classes = 10)
-train_dataloader = DataLoader(train_dataset, batch_size = 16, shuffle = False, num_workers = 0)
+train_dataloader = DataLoader(train_dataset, batch_size = 8, shuffle = False, num_workers = 0)
 
 for i, (_, inputs, labels) in enumerate(train_dataloader):
     print(i)
+    model.eval()
     torch.cuda.empty_cache()
-    inputs = inputs.permute(0,1,2,3,4)
-    inputs = Variable(inputs.cuda())
+    inputs = inputs.permute(0,1,2,3,4).cuda()
+    #inputs = Variable(inputs.cuda())
     batch_size = inputs.size(0)
     inputs = inputs.cuda()
     #labels = labels.cuda()
@@ -73,7 +74,7 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
     #semantic_true = att[labels].cuda()
 
     convlstm_feats = model(inputs)
-    convlstm_feats = model(inputs).contiguous().view(convlstm_feats.size(0), -1)
+    convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
     #generator_feats = generator(semantic_true.float(), noise)
     
     if (i == 0):
