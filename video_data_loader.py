@@ -17,6 +17,7 @@ class video_dataset(Dataset):
             split = 'test'
 
         self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len=64, preprocess = False)
+        print('Dataset Loaded')
 
         if self.train:
             train_data = []
@@ -24,6 +25,7 @@ class video_dataset(Dataset):
 
             for i in range(len(self.dataset)):
                 images, labels = self.dataset[i]
+                print(i)
                 
                 if int(labels) in self.classes:
                     train_data.append(images)
@@ -135,8 +137,8 @@ class old_video_dataset(Dataset):
 
 if __name__ == "__main__":
     from torch.utils.data import DataLoader
-    train_data = video_dataset(train = True, classes = range(101))
-    train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=4)
+    train_data = video_dataset(train = False, classes = range(10))
+    train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=8)
 
     for i, sample in enumerate(train_loader):
         inputs = sample[0]
