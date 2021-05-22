@@ -46,27 +46,31 @@ all_classes = np.arange(total_classes)
         #attention=True,
     #)
 
-generator = Modified_Generator(semantic_dim, noise_dim)
+#generator = Modified_Generator(semantic_dim, noise_dim)
 
 #checkpoint = torch.load(model_path, map_location = lambda storage, loc: storage)
 #model.load_state_dict(checkpoint['extractor_state_dict'])
 #generator.load_state_dict(checkpoint['generator_state_dict'])
 
 model = model.cuda()
-generator = generator.cuda()
+#generator = generator.cuda()
+
+#model = nn.parallel.replicate(model, [0,1,2,3])
 
 train_dataset = old_video_dataset(train = False, classes = all_classes[:total_classes], num_classes = 10)
-train_dataloader = DataLoader(train_dataset, batch_size = 100, shuffle = False, num_workers = 4)
+train_dataloader = DataLoader(train_dataset, batch_size = 16, shuffle = False, num_workers = 0)
 
 for i, (_, inputs, labels) in enumerate(train_dataloader):
-    inputs = inputs.permute(0,2,1,3,4)
+    print(i)
+    torch.cuda.empty_cache()
+    inputs = inputs.permute(0,1,2,3,4)
     inputs = Variable(inputs.cuda())
     batch_size = inputs.size(0)
-    #inputs = inputs.contiguous().view(inputs.size(0), -1)
     inputs = inputs.cuda()
-    labels = labels.cuda()
-    noise = Variable(torch.cuda.FloatTensor(np.random.normal(0, 1, (batch_size, noise_dim)))).cuda()
-    semantic_true = att[labels].cuda()
+    #labels = labels.cuda()
+    #inputs = inputs.contiguous().view(inputs.size(0), -1)
+    #noise = Variable(torch.cuda.FloatTensor(np.random.normal(0, 1, (batch_size, noise_dim)))).cuda()
+    #semantic_true = att[labels].cuda()
 
     convlstm_feats = model(inputs)
     convlstm_feats = model(inputs).contiguous().view(convlstm_feats.size(0), -1)
@@ -82,6 +86,7 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
         #convlstm_feat = torch.cat((convlstm_feat, inputs), 0)
         #generator_feat = torch.cat((generator_feat, generator_feats), 0)
 
+    del convlstm_feats
 
 #mask_feat_path = "/home/SharedData/fabio/zsl_cgan/new_model/masked_feat_1629x1280.npy"
 #non_mask_feat_path = "/home/SharedData/fabio/zsl_cgan/new_model/non_masked_feat_1994x1280.npy"
