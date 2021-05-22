@@ -16,7 +16,7 @@ class video_dataset(Dataset):
         else:
             split = 'test'
 
-        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len=64)
+        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len=64, preprocess = False)
 
         if self.train:
             train_data = []
@@ -50,7 +50,7 @@ class video_dataset(Dataset):
     def __getitem__(self, index):
         if self.train:
             image = self.train_data[index]
-            image = torch.FloatTensor(image)
+            #image = torch.FloatTensor(image)
             target = self.train_labels[index]
         
         else:
@@ -131,3 +131,18 @@ class old_video_dataset(Dataset):
             return len(self.train_data)
         else:
             return len(self.test_data)
+
+
+if __name__ == "__main__":
+    from torch.utils.data import DataLoader
+    train_data = video_dataset(train = True, classes = range(101))
+    train_loader = DataLoader(train_data, batch_size=100, shuffle=True, num_workers=4)
+
+    for i, sample in enumerate(train_loader):
+        inputs = sample[0]
+        labels = sample[1]
+        print(inputs.size())
+        print(labels)
+
+        if i == 1:
+            break
