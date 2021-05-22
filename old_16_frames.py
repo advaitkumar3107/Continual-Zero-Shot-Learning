@@ -21,8 +21,8 @@ class Path(object):
             # root_dir = "../data/UCF-101/small_ucf101"
 
             # Save preprocess data into output_dir
-            output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if processing
-            #output_dir = "/home/SharedData/fabio/Generalised Zero Shot Learning/data" # if not preprocessing
+            #output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if processing
+            output_dir = "/home/SharedData/fabio/Generalised Zero Shot Learning/data" # if not preprocessing
             return root_dir, output_dir
 
         elif database == 'hmdb51':
