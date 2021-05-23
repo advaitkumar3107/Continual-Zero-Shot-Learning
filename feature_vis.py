@@ -77,6 +77,7 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
 
     convlstm_feats = model(inputs)
     convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
+    convlstm_feats = torch.cat((convlstm_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)
     #generator_feats = generator(semantic_true.float(), noise)
     
     if (i == 0):
