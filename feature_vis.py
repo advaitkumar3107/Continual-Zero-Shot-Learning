@@ -25,6 +25,8 @@ from video_data_loader import video_dataset, old_video_dataset
 #model_path = "run/pipeline_incremental/Bi-LSTM-ucf101_increment_0_epoch-199.pth.tar"
 model = generate_model()
 model = load_pretrained_model(model, 'saved_weights/resnet_18.pth')
+for param in model.parameters():
+    param.requires_grad = False
 model = nn.Sequential(*list(model.children())[:-1])
 
 att = np.load("../npy_files/seen_semantic_51.npy")
