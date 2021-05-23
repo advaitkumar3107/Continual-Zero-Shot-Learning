@@ -34,7 +34,7 @@ all_features = convlstm_feat
 dataset_label = np.zeros((all_features.shape[0],1))
 
 for i in range(all_features.shape[0]):
-    dataset_label[i,:] = all_features[i,2048]
+    dataset_label[i,:] = all_features[i, -1]
 
 start_time = time.time()
 
