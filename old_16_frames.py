@@ -22,7 +22,7 @@ class Path(object):
 
             # Save preprocess data into output_dir
             #output_dir = "/home/SharedData/fabio/zsl_cgan/64_frame_split" # if processing
-            output_dir = "/home/SharedData/fabio/Generalised Zero Shot Learning/data" # if not preprocessing
+            output_dir = "/home/SharedData/fabio/Generalised Zero Shot Learning/16_frame_data" # if not preprocessing
             return root_dir, output_dir
 
         elif database == 'hmdb51':
@@ -106,8 +106,6 @@ class VideoDataset(Dataset):
     def __getitem__(self, index):
         # Loading and preprocessing.
         buffer = self.load_frames(self.fnames[index])
-        if (buffer.shape[0] < 64):
-            print(self.fnames[index])
         buffer = self.crop(buffer, self.clip_len, self.crop_size)
         labels = np.array(self.label_array[index])
 
