@@ -15,13 +15,13 @@ from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
 
 
-total_classes = 10
+total_classes = 40
 all_classes = np.arange(total_classes)
-train_dataset = video_dataset(train = False, classes = all_classes[:total_classes])
-train_dataloader = DataLoader(train_dataset, batch_size = 8, shuffle = False, num_workers = 0)
+train_dataset = video_dataset(train = True, classes = all_classes[:total_classes])
+train_dataloader = DataLoader(train_dataset, batch_size = 16, shuffle = False, num_workers = 0)
 
 model = generate_model()
-model = load_pretrained_model(model, 'saved_weights/resnet_18.pth')
+model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
 for param in model.parameters():
     param.requires_grad = False
 model = nn.Sequential(*list(model.children())[:-1])
