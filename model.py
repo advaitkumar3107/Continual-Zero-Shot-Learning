@@ -4,7 +4,7 @@ from models import resnet
 
 def generate_model():
     model = resnet.generate_model(model_depth = 50,
-                                      n_classes = 1139,
+                                      n_classes = 700,
                                       n_input_channels = 3,
                                       shortcut_type = 'B',
                                       conv1_t_size = 7,
