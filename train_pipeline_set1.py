@@ -141,10 +141,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                        map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
         print("Initializing weights from: {}...".format(
             os.path.join(save_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
-        model.load_state_dict(checkpoint['extractor_state_dict'])
+        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
-        #generator.load_state_dict(checkpoint['generator_state_dict'])
-        #discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+        generator.load_state_dict(checkpoint['generator_state_dict'])
+        discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
     
         print("Training {} saved model...".format(modelName))
 
@@ -162,10 +162,20 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     print('Training model on {} dataset...'.format(dataset))
 
-    train_dataset = video_dataset(train = True, classes = all_classes[:num_classes])
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    #train_dataset = video_dataset(train = True, classes = all_classes[:num_classes])
+    #train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    #test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
+    #test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+
+    train_feats = np.load("convlstm_feat_labs_40.npy")
+    train_feats = torch.tensor(train_feats)
+
+    test_feats = np.load("convlstm_feat_labs_40_test.npy")
+    test_feats = torch.tensor(test_feats)
+
+    train_dataloader = DataLoader(train_feats, batch_size=batch_size, shuffle=True, num_workers=4)
+    test_dataloader = DataLoader(test_feats, batch_size=batch_size, shuffle=False, num_workers=4)
+
 
     trainval_loaders = {'train': train_dataloader, 'test': test_dataloader}
     trainval_sizes = {x: len(trainval_loaders[x].dataset) for x in ['train', 'test']}
@@ -176,7 +186,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         # att = torch.tensor(att).cuda()    
 
     if cuda:
-        model = model.to(device)
+        #model = model.to(device)
         generator = generator.to(device)
         discriminator = discriminator.to(device)
         classifier = classifier.to(device)
@@ -187,8 +197,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     adversarial_loss = torch.nn.BCELoss().to(device)    
 
-    att = np.load("npy_files/seen_semantic_51.npy")
-    att = torch.tensor(att).cuda()    
+    att = np.load("../npy_files/seen_semantic_51.npy")
+    att = torch.tensor(att).cuda()  
+
+      
 
     if args.train == 1:
         if args.only_gan == 0:    
@@ -199,28 +211,28 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_corrects = 0.0
             #gen_running_corrects = 0.0
 
-                model.eval()
+                #model.eval()
             #generator.train()
             #discriminator.train()
                 classifier.train()
 
-                for indices, inputs, labels in (trainval_loaders["train"]):
-                    inputs = inputs.permute(0,2,1,3,4)
-                    image_sequences = Variable(inputs.to(device), requires_grad=True)
-                    labels = Variable(labels.to(device), requires_grad=False)                
+                for indices in (trainval_loaders["train"]):
+                    indices = indices.cuda()
+                    feats = Variable(indices[:,:2048], requires_grad = True)
+                    labels = Variable(indices[:,-1], requires_grad = False).long()
 
                     optimizer.zero_grad()
 
-                    model.lstm.reset_hidden_state()
-                    loop_batch_size = len(inputs)
+                    #model.lstm.reset_hidden_state()
+                    loop_batch_size = len(feats)
 
-                    probs = classifier(model(image_sequences))
+                    probs = classifier(feats)
                     loss = nn.CrossEntropyLoss()(probs, labels)
                     loss.backward()
                     optimizer.step()
                 
                     _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
-                    running_loss += loss.item() * inputs.size(0)
+                    running_loss += loss.item() * feats.size(0)
                     running_corrects += torch.sum(predictions == labels.data)
 
                 epoch_loss = running_loss / trainval_sizes["train"]
@@ -238,16 +250,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                     running_corrects = 0.0
 
-                    for indices, inputs, labels in (trainval_loaders["test"]):
-                        inputs = inputs.permute(0,2,1,3,4)
-                        image_sequences = Variable(inputs.to(device), requires_grad=False)
-                        labels = Variable(labels.to(device), requires_grad=False)              
-                        loop_batch_size = len(inputs)
+                    for indices in (trainval_loaders["test"]):
+                        indices = indices.cuda()
+                        feats = Variable(indices[:,:2048], requires_grad = True)
+                        labels = Variable(indices[:,-1], requires_grad = False).long()
+                        loop_batch_size = len(feats)
 
                         with torch.no_grad():
-                            model.lstm.reset_hidden_state()
-                            true_features_2048 = model(image_sequences)
-                            probs = classifier(true_features_2048)
+                            probs = classifier(feats)
 
                         _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
                         running_corrects += torch.sum(predictions == labels.data)
@@ -265,11 +275,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
                     torch.save({
                         'epoch': epoch + 1,
-                        'extractor_state_dict': model.state_dict(),
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
                         'classifier_state_dict': classifier.state_dict(),
-                        'num_classes': num_classes,
                         }, save_path)
                     print("Save model at {}\n".format(save_path))
 
@@ -281,18 +289,16 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             running_g_loss = 0.0
             gen_running_corrects = 0.0
 
-            model.eval()
             generator.train()
             discriminator.train()
             classifier.train()
 
-            for indices, inputs, labels in (trainval_loaders["train"]):
-                inputs = inputs.permute(0,2,1,3,4)
-                image_sequences = Variable(inputs.to(device), requires_grad=True)
-                labels = Variable(labels.to(device), requires_grad=False)                
+            for indices in (trainval_loaders["train"]):
+                indices = indices.cuda()
+                feats = Variable(indices[:,:2048], requires_grad = True)
+                labels = Variable(indices[:,-1], requires_grad = False).long()
 
-                model.lstm.reset_hidden_state()
-                loop_batch_size = len(inputs)
+                loop_batch_size = len(feats)
 
                 valid = Variable(FloatTensor(loop_batch_size, 1).fill_(1.0), requires_grad=False)
                 fake = Variable(FloatTensor(loop_batch_size, 1).fill_(0.0), requires_grad=False)
@@ -303,7 +309,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 optimizer_D.zero_grad()
 
 ############## All real batch training #######################
-                true_features_2048 = model(image_sequences)
+                true_features_2048 = feats
                 validity_real = discriminator(true_features_2048).view(-1)
                 d_real_loss = adversarial_loss(validity_real, valid)
                 d_real_loss.backward(retain_graph = True)
@@ -328,8 +334,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 _, gen_predictions = torch.max(torch.softmax(generated_preds, dim = 1), dim = 1, keepdim = False)
                                   
-                running_d_loss = running_d_loss + (d_real_loss.item() + d_fake_loss.item()) * inputs.size(0)
-                running_g_loss = running_g_loss + g_loss.item() * inputs.size(0)
+                running_d_loss = running_d_loss + (d_real_loss.item() + d_fake_loss.item()) * feats.size(0)
+                running_g_loss = running_g_loss + g_loss.item() * feats.size(0)
                 gen_running_corrects += torch.sum(gen_predictions == labels.data)
 
             epoch_d_loss = running_d_loss / trainval_sizes["train"]
@@ -350,11 +356,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 running_corrects = 0.0
 
-                for indices, inputs, labels in (trainval_loaders["test"]):
-                    inputs = inputs.permute(0,2,1,3,4)
-                    image_sequences = Variable(inputs.to(device), requires_grad=False)
-                    labels = Variable(labels.to(device), requires_grad=False)              
-                    loop_batch_size = len(inputs)
+                for indices in (trainval_loaders["test"]):
+                    indices = indices.cuda()
+                    feats = Variable(indices[:,:2048], requires_grad = True)
+                    labels = Variable(indices[:,-1], requires_grad = False).long()
+ 
+                    loop_batch_size = len(feats)
                     
                     noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
                     semantic_true = att[labels]
@@ -379,11 +386,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
                 torch.save({
                         'epoch': epoch + 1,
-                        'extractor_state_dict': model.state_dict(),
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
                         'classifier_state_dict': classifier.state_dict(),
-                        'num_classes': num_classes,
                     }, save_path)
                 print("Save model at {}\n".format(save_path))
 
