@@ -23,17 +23,10 @@ from video_data_loader import video_dataset
 
 from opts import parse_opts
 from model import generate_model, load_pretrained_model
+import scipy.io as sio
 
-
-model = generate_model()
-model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
-
-#model = torchvision.models.video.r2plus1d_18(pretrained=True, progress=True)
-model = nn.Sequential(*list(model.children())[:-1])
-model = model.cuda()
-
-inputs = torch.ones((1, 3, 64, 112, 112)).cuda()
-outputs = model(inputs)
-
-outputs = outputs.view(outputs.shape[0], -1)
-print(outputs.shape)
+att = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+att = att["att"]
+att = torch.tensor(att).cuda()
+att = torch.transpose(att,1,0)
+print(att.shape)
