@@ -22,7 +22,7 @@ from models.nets import *
 from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
 
-num_classes = 50
+num_classes = 10
 
 feat_path = "convlstm_feat_labs_" + str(num_classes) + ".npy"
 convlstm_feat = np.load(feat_path)
