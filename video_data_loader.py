@@ -16,7 +16,7 @@ class video_dataset(Dataset):
         else:
             split = 'test'
 
-        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len=64, preprocess = False)
+        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len = 16, preprocess = False)
         print('Dataset Loaded')
 
         if self.train:
@@ -80,7 +80,7 @@ class old_video_dataset(Dataset):
         else:
             split = 'test'
 
-        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len=64)
+        self.dataset = VideoDataset(dataset='ucf101', split= split, clip_len = 16)
 
         if self.train:
             train_data = []
