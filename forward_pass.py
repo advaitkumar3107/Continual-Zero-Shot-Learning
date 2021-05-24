@@ -17,7 +17,7 @@ from video_data_loader import video_dataset, old_video_dataset
 
 total_classes = 40
 all_classes = np.arange(total_classes)
-train_dataset = video_dataset(train = True, classes = all_classes[:total_classes])
+train_dataset = video_dataset(train = False, classes = all_classes[:total_classes])
 train_dataloader = DataLoader(train_dataset, batch_size = 16, shuffle = False, num_workers = 0)
 
 model = generate_model()
@@ -45,4 +45,4 @@ for i, (_, inputs, labels) in enumerate(train_dataloader):
 	# pdb.set_trace()	
 	print(convlstm_feat_labs.shape)
 
-np.save(f"convlstm_feat_labs_{total_classes}.npy", convlstm_feat_labs.cpu().detach().numpy())
+np.save(f"convlstm_feat_labs_{total_classes}_test.npy", convlstm_feat_labs.cpu().detach().numpy())
