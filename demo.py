@@ -25,8 +25,10 @@ from opts import parse_opts
 from model import generate_model, load_pretrained_model
 import scipy.io as sio
 
-att = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
-att = att["att"]
-att = torch.tensor(att).cuda()
-att = torch.transpose(att,1,0)
-print(att.shape)
+train_feats = np.load("convlstm_feat_labs_40.npy")
+train_feats = torch.tensor(train_feats)
+
+train_dataloader = DataLoader(train_feats, batch_size = 100, shuffle=True, num_workers=4)
+
+for indices in train_dataloader:
+    print(indices.shape)
