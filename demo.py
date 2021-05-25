@@ -22,7 +22,8 @@ import requests
 from video_data_loader import video_dataset
 from dataloader import create_data_loader
 
-train_loader, test_loader = create_data_loader('ucf101_i3d/i3d.mat', classes = range(40, 50), batch_size = 100)
+train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', range(40))
 
-for (inputs, labels) in train_loader:
-    print(labels)
+print(len_train)
+print(len_test)
+
