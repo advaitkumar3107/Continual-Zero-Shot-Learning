@@ -167,15 +167,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     #test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
     #test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    train_feats = np.load("convlstm_feat_labs_40.npy")
-    train_feats = torch.tensor(train_feats)
-
-    test_feats = np.load("convlstm_feat_labs_40_test.npy")
-    test_feats = torch.tensor(test_feats)
-
-    train_dataloader = DataLoader(train_feats, batch_size=batch_size, shuffle=True, num_workers=4)
-    test_dataloader = DataLoader(test_feats, batch_size=batch_size, shuffle=False, num_workers=4)
-
+    train_dataloader, test_dataloader = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
     trainval_loaders = {'train': train_dataloader, 'test': test_dataloader}
     trainval_sizes = {x: len(trainval_loaders[x].dataset) for x in ['train', 'test']}
@@ -216,10 +208,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             #discriminator.train()
                 classifier.train()
 
-                for indices in (trainval_loaders["train"]):
-                    indices = indices.cuda()
-                    feats = Variable(indices[:,:2048], requires_grad = True)
-                    labels = Variable(indices[:,-1], requires_grad = False).long()
+                for (inputs, labels) in (trainval_loaders["train"]):
+                    feats = Variable(inputs, requires_grad = True).cuda()
+                    labels = Variable(labels, requires_grad = False).long().cuda()
 
                     optimizer.zero_grad()
 
@@ -250,10 +241,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                     running_corrects = 0.0
 
-                    for indices in (trainval_loaders["test"]):
-                        indices = indices.cuda()
-                        feats = Variable(indices[:,:2048], requires_grad = True)
-                        labels = Variable(indices[:,-1], requires_grad = False).long()
+                    for (inputs, labels) in (trainval_loaders["test"]):
+                        feats = Variable(inputs, requires_grad = True).cuda()
+                        labels = Variable(labels, requires_grad = False).long().cuda()
                         loop_batch_size = len(feats)
 
                         with torch.no_grad():
@@ -293,10 +283,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             discriminator.train()
             classifier.train()
 
-            for indices in (trainval_loaders["train"]):
-                indices = indices.cuda()
-                feats = Variable(indices[:,:2048], requires_grad = True)
-                labels = Variable(indices[:,-1], requires_grad = False).long()
+            for (inputs, labels) in (trainval_loaders["train"]):
+                feats = Variable(inputs, requires_grad = True).cuda()
+                labels = Variable(labels, requires_grad = False).long().cuda()
 
                 loop_batch_size = len(feats)
 
@@ -356,10 +345,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 running_corrects = 0.0
 
-                for indices in (trainval_loaders["test"]):
-                    indices = indices.cuda()
-                    feats = Variable(indices[:,:2048], requires_grad = True)
-                    labels = Variable(indices[:,-1], requires_grad = False).long()
+                for (inputs, labels) in (trainval_loaders["test"]):
+                    feats = Variable(inputs, requires_grad = True).cuda()
+                    labels = Variable(labels, requires_grad = False).long().cuda()
  
                     loop_batch_size = len(feats)
                     
