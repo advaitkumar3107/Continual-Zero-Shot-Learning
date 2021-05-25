@@ -20,15 +20,9 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
 from video_data_loader import video_dataset
+from dataloader import create_data_loader
 
-from opts import parse_opts
-from model import generate_model, load_pretrained_model
-import scipy.io as sio
+train_loader, test_loader = create_data_loader('ucf101_i3d/i3d.mat', classes = range(40, 50), batch_size = 100)
 
-train_feats = np.load("convlstm_feat_labs_40.npy")
-train_feats = torch.tensor(train_feats)
-
-train_dataloader = DataLoader(train_feats, batch_size = 100, shuffle=True, num_workers=4)
-
-for indices in train_dataloader:
-    print(indices.shape)
+for (inputs, labels) in train_loader:
+    print(labels)
