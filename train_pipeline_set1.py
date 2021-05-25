@@ -69,7 +69,7 @@ dataset = 'ucf101' # Options: hmdb51 or ucf101
 
 total_classes = args.total_classes
 
-all_classes = np.arange(total_classes)
+all_classes = range(total_classes)
 
 n_cl_temp = 0
 class_map = {}
@@ -210,7 +210,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 classifier.train()
 
                 for (inputs, labels) in (trainval_loaders["train"]):
-                    feats = Variable(inputs, requires_grad = True).cuda()
+                    feats = Variable(inputs, requires_grad = True).float().cuda()
                     labels = Variable(labels, requires_grad = False).long().cuda()
 
                     optimizer.zero_grad()
@@ -243,7 +243,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_corrects = 0.0
 
                     for (inputs, labels) in (trainval_loaders["test"]):
-                        feats = Variable(inputs, requires_grad = True).cuda()
+                        feats = Variable(inputs, requires_grad = True).float().cuda()
                         labels = Variable(labels, requires_grad = False).long().cuda()
                         loop_batch_size = len(feats)
 
@@ -285,7 +285,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             classifier.train()
 
             for (inputs, labels) in (trainval_loaders["train"]):
-                feats = Variable(inputs, requires_grad = True).cuda()
+                feats = Variable(inputs, requires_grad = True).float().cuda()
                 labels = Variable(labels, requires_grad = False).long().cuda()
 
                 loop_batch_size = len(feats)
@@ -347,7 +347,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_corrects = 0.0
 
                 for (inputs, labels) in (trainval_loaders["test"]):
-                    feats = Variable(inputs, requires_grad = True).cuda()
+                    feats = Variable(inputs, requires_grad = True).float().cuda()
                     labels = Variable(labels, requires_grad = False).long().cuda()
  
                     loop_batch_size = len(feats)
