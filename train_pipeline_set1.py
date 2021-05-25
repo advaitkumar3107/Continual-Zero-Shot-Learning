@@ -134,7 +134,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
  
     generator = Modified_Generator(semantic_dim, noise_dim)
-    discriminator = Discriminator(input_dim=input_dim)
+    discriminator = Discriminator(input_dim = 8192)
     classifier = Classifier(num_classes = num_classes)
 
     if args.resume_epoch is not None:
@@ -168,15 +168,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     #test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
     #test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-    train_dataloader, test_dataloader = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
+    train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:40])
 
     trainval_loaders = {'train': train_dataloader, 'test': test_dataloader}
-    trainval_sizes = {x: len(trainval_loaders[x].dataset) for x in ['train', 'test']}
-    lab_list = []
-    pred_list = []
-
-        # att = np.load("../npy_files/seen_semantic_51.npy")
-        # att = torch.tensor(att).cuda()    
 
     if cuda:
         #model = model.to(device)
@@ -194,7 +188,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     att = torch.tensor(att).cuda()  
 
       
-
     if args.train == 1:
         if args.only_gan == 0:    
             for epoch in range(num_epochs):
@@ -227,8 +220,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_loss += loss.item() * feats.size(0)
                     running_corrects += torch.sum(predictions == labels.data)
 
-                epoch_loss = running_loss / trainval_sizes["train"]
-                epoch_acc = running_corrects.double() / trainval_sizes["train"]
+                epoch_loss = running_loss/len_train
+                epoch_acc = running_corrects.item()/len_train
 
                 writer.add_scalar('data/train_acc_epoch_benchmark {}'.format(i), epoch_acc, epoch)
 
@@ -253,7 +246,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
                         running_corrects += torch.sum(predictions == labels.data)
 
-                    real_epoch_acc = running_corrects.double() / trainval_sizes["test"]
+                    print(len_test)
+
+                    real_epoch_acc = running_corrects.item()/len_test
 
                     writer.add_scalar('data/test_acc_epoch_benchmark {}'.format(i), real_epoch_acc, epoch)
 
@@ -328,9 +323,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_g_loss = running_g_loss + g_loss.item() * feats.size(0)
                 gen_running_corrects += torch.sum(gen_predictions == labels.data)
 
-            epoch_d_loss = running_d_loss / trainval_sizes["train"]
-            epoch_g_loss = running_g_loss / trainval_sizes["train"]
-            gen_epoch_acc = gen_running_corrects.double() / trainval_sizes["train"]
+            epoch_d_loss = running_d_loss / len_train
+            epoch_g_loss = running_g_loss / len_train
+            gen_epoch_acc = gen_running_corrects.item() / len_train
 
             writer.add_scalar('data/gen_train_acc_epoch_benchmark {}'.format(i), gen_epoch_acc, epoch)
             writer.add_scalar('data/d_loss_epoch_benchmark {}'.format(i), epoch_d_loss, epoch)
@@ -362,7 +357,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
                     running_corrects += torch.sum(predictions == labels.data)
 
-                real_epoch_acc = running_corrects.double() / trainval_sizes["test"]
+                real_epoch_acc = running_corrects.item() / len_test
 
                 writer.add_scalar('data/gen_test_acc_epoch_benchmark {}'.format(i), real_epoch_acc, epoch)
 
