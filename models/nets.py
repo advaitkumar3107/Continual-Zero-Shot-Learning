@@ -132,7 +132,7 @@ class Generator(nn.Module):
             *block(128, 256),
             *block(256, 512),
             *block(512, 1024),
-            nn.Linear(1024, 2048),
+            nn.Linear(1024, 8192),
             nn.Tanh()
         )
 
@@ -161,7 +161,7 @@ class Modified_Generator(nn.Module):
             *block(256, 512),
             *block(512, 512),
             *block(512, 1024),
-            nn.Linear(1024, 2048),
+            nn.Linear(1024, 8192),
             nn.Tanh()
         )
          
@@ -179,7 +179,7 @@ class Discriminator(nn.Module):
         # self.label_embedding = nn.Embedding(final_total_class, final_total_class)
 
         self.model = nn.Sequential(
-            # nn.Linear(final_total_class + 2048, 512),
+            # nn.Linear(final_total_class + 8192, 512),
             nn.Linear(input_dim, 512),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(512, 512),
@@ -262,9 +262,9 @@ class IWT(nn.Module):
 class Classifier(nn.Module):
     def __init__(self, num_classes):
         super(Classifier, self).__init__()
-        self.extractor = nn.Sequential(nn.Linear(2048, 512), 
-            nn.BatchNorm1d(512, momentum=0.01),
-            nn.ReLU())
+        self.extractor = nn.Sequential(nn.Linear(8192, 1024), 
+            nn.BatchNorm1d(1024, momentum=0.01),
+            nn.ReLU(), nn.Linear(1024, 512), nn.BatchNorm1d(512, momentum = 0.01), nn.ReLU())
      
         self.classifier_out = nn.Linear(512, num_classes) 
 
@@ -280,7 +280,7 @@ class Modified_Classifier(nn.Module):
         super(Modified_Classifier, self).__init__()
         self.dwt = DWT()
         self.idwt = IWT()
-        self.linear1 = nn.Linear(2048, 1600)
+        self.linear1 = nn.Linear(8192, 1600)
         
         self.extractor = nn.Sequential(nn.Linear(1600, 1024), 
             nn.BatchNorm1d(1024, momentum=0.01),
