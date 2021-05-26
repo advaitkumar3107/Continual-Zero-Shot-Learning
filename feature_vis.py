@@ -22,9 +22,9 @@ from models.nets import *
 from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
 
-num_classes = 10
+num_classes = 40
 
-feat_path = "convlstm_feat_labs_" + str(num_classes) + ".npy"
+feat_path = "convlstm_feat_labs_" + str(num_classes) + "_test.npy"
 convlstm_feat = np.load(feat_path)
 #convlstm_feat = convlstm_feat.squeeze_(0)
 
@@ -45,7 +45,7 @@ embeddings = tsne.fit_transform(all_features)
 vis_x = embeddings[:, 0]
 vis_y = embeddings[:, 1]
 sns.set(rc={'figure.figsize':(11.7,8.27)})
-palette = sns.color_palette("bright", num_classes)
+palette = sns.color_palette("bright", 39)
 
 plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], legend='full', palette=palette)
 #plt.savefig("2048_tsne.png")
