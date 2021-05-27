@@ -315,9 +315,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 L2_loss = nn.MSELoss()(gen_imgs, true_features_2048)
                 cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
-                g_loss = gen_adv + 25*L2_loss + 0.25*cls_loss
+                g_loss = gen_adv + 25*L2_loss + cls_loss
                 g_loss.backward(retain_graph = True)
                 optimizer_G.step()                
+
+                optimizer.zero_grad()
+                cls_loss.backward(retain_graph = True)
+                optimizer.step()
 
                 _, gen_predictions = torch.max(torch.softmax(generated_preds, dim = 1), dim = 1, keepdim = False)
                                   
