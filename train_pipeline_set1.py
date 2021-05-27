@@ -319,10 +319,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 g_loss.backward(retain_graph = True)
                 optimizer_G.step()                
 
-                optimizer.zero_grad()
-                cls_loss.backward(retain_graph = True)
-                optimizer.step()
-
                 _, gen_predictions = torch.max(torch.softmax(generated_preds, dim = 1), dim = 1, keepdim = False)
                                   
                 running_d_loss = running_d_loss + (d_real_loss.item() + d_fake_loss.item()) * feats.size(0)
