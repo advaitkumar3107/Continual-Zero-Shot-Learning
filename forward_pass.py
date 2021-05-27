@@ -40,13 +40,19 @@ for i, (inputs, labels) in enumerate(train_dataloader):
     labels = Variable(labels, requires_grad = False).long().cuda()
     noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
     semantic = att[labels]
-    convlstm_feats = model(semantic.float(), noise)
+    convlstm_feats = inputs
     convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
+    gen_feats = model(semantic.float(), noise)
+    gen_feats = gen_feats.contiguous().view(gen_feats.size(0), -1)
     if (i == 0):		
-        convlstm_feat_labs = torch.cat((convlstm_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)
+        convlstm_feats = torch.cat((convlstm_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim = 1)
+        gen_feat_labs = torch.cat((gen_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)
     else:
-        convlstm_feat_labs = torch.cat((convlstm_feat_labs, torch.cat((convlstm_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)), 0)
+        convlstm_feat_labs = torch.cat((convlstm_feat_labs, torch.cat((convlstm_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim=1), 0)
+        gen_feat_labs = torch.cat((gen_feat_labs, torch.cat((gen_feats,labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)), 0)
 	# pdb.set_trace()	
     print(convlstm_feat_labs.shape)
+    print(gen_feat_labs.shape)
 
 np.save(f"convlstm_feat_labs_{total_classes}_test.npy", convlstm_feat_labs.cpu().detach().numpy())
+np.save(f"gen_feat_labs_{total_classes}_test.npy", gen_feat_labs.cpu().detach().numpy())
