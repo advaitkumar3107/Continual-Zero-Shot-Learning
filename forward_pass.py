@@ -22,7 +22,7 @@ all_classes = range(total_classes)
 train_dataloader, test_dataloader, _, _ = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:10])
 
 model = Modified_Generator(300, 1024)
-checkpoint = torch.load(os.path.join('run/pipeline_set1/' + 'Bi-LSTM-ucf101_increment_epoch-299' + '.pth.tar'),
+checkpoint = torch.load(os.path.join('run/pipeline_set1_temp/' + 'Bi-LSTM-ucf101_increment_epoch-299' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
 model.load_state_dict(checkpoint['generator_state_dict'])
 model = model.cuda()
