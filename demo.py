@@ -22,8 +22,12 @@ import requests
 from video_data_loader import video_dataset
 from dataloader import create_data_loader
 
-train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', range(40))
+all_classes = range(10)
+train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:10])
 
-print(len_train)
-print(len_test)
+sum = 0
 
+for (inputs, labels) in train_dataloader:
+    sum += (labels == 9).sum()
+
+print(sum)    
