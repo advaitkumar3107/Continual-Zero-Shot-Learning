@@ -29,12 +29,15 @@ print("Generator feature shape {}".format(gen_feat.shape))
 
 all_features = np.concatenate((convlstm_feat, gen_feat), 0)
 dataset_label = np.zeros((all_features.shape[0],1))
+dataset_style = np.zeros((all_features.shape[0],1))
 
-#for i in range(all_features.shape[0]):
-    #dataset_label[i,:] = all_features[i, -1]
-    #print(all_features[i,-1])
+dataset_style[convlstm_feat.shape[0]:,:] = 1
 
-dataset_label[convlstm_feat.shape[0]:,:] = 1
+for i in range(all_features.shape[0]):
+    dataset_label[i,:] = all_features[i, -1]
+    print(all_features[i,-1])
+
+#dataset_label[convlstm_feat.shape[0]:,:] = 1
 
 start_time = time.time()
 
@@ -44,9 +47,9 @@ embeddings = tsne.fit_transform(all_features)
 vis_x = embeddings[:, 0]
 vis_y = embeddings[:, 1]
 sns.set(rc={'figure.figsize':(11.7,8.27)})
-palette = sns.color_palette("bright", 2)
+palette = sns.color_palette("bright", 9)
 
-plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], legend='full', palette=palette)
+plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], style = dataset_style[:,0], legend='full', palette=palette)
 #plt.savefig("2048_tsne.png")
 plt.savefig("dataset_tsne.png")
 print("--- {} mins {} secs---".format((time.time() - start_time)//60,(time.time() - start_time)%60))
