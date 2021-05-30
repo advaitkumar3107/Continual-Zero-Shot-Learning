@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 
 def create_data_loader(feat_path, classes, batch_size = 100):
     feats = sio.loadmat(feat_path)
-    labels = feats['labels']
+    labels = feats['labels'] - 1
     feats = feats['features']
     feats = np.transpose(feats,(1,0))
     labels = np.squeeze(labels, axis = 1)
