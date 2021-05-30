@@ -34,7 +34,7 @@ att = torch.tensor(att).cuda()
 print(att.shape)
 
 for i, (inputs, labels) in enumerate(train_dataloader):
-    print(i)
+    print(labels)
 	# torch.cuda.empty_cache()
     batch_size = inputs.size(0)
     labels = Variable(labels, requires_grad = False).long().cuda()
