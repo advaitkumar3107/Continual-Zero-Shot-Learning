@@ -28,6 +28,6 @@ train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf
 sum = 0
 
 for (inputs, labels) in train_dataloader:
-    sum += (labels == 9).sum()
+    sum += (labels == 0).sum()
 
 print(sum)    
