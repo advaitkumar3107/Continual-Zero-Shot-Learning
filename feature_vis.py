@@ -47,7 +47,7 @@ embeddings = tsne.fit_transform(all_features)
 vis_x = embeddings[:, 0]
 vis_y = embeddings[:, 1]
 sns.set(rc={'figure.figsize':(11.7,8.27)})
-palette = sns.color_palette("bright", 9)
+palette = sns.color_palette("bright", num_classes)
 
 plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], style = dataset_style[:,0], legend='full', palette=palette)
 #plt.savefig("2048_tsne.png")
