@@ -313,6 +313,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 gen_adv = adversarial_loss(validity, valid)
                 KL_loss = nn.KLDivLoss(reduction = 'batchmean')(gen_imgs, true_features_2048)
+                #l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
                 cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
                 g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
