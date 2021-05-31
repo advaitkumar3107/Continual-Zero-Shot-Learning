@@ -21,6 +21,7 @@ from models.nets import *
 from video_data_loader import video_dataset
 from model import generate_model, load_pretrained_model
 from dataloader import create_data_loader
+import scipy.io as sio
 
 
 
@@ -184,7 +185,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     adversarial_loss = torch.nn.BCELoss().to(device)    
 
-    att = np.load("../npy_files/seen_semantic_51.npy")
+    feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+    att = feats['att']
+    att = np.transpose(att, (1,0))
     att = torch.tensor(att).cuda()  
 
       
@@ -312,11 +315,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 generated_preds = classifier(gen_imgs)
 
                 gen_adv = adversarial_loss(validity, valid)
-                KL_loss = nn.KLDivLoss(reduction = 'batchmean')(gen_imgs, true_features_2048)
-                #l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
-                cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
+                #KL_loss = nn.KLDivLoss(reduction = 'batchmean')(gen_imgs, true_features_2048)
+                l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
+                #cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
-                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
+                #g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
+                g_loss = gen_adv + 100*l1_loss
                 g_loss.backward(retain_graph = True)
                 optimizer_G.step()                
 
