@@ -23,8 +23,11 @@ from video_data_loader import video_dataset
 from dataloader import create_data_loader
 import scipy.io as sio
 
-feats = sio.loadmat('../npy_files/seen_semantic_51.npy')
+feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
 att = feats['att']
+att = np.transpose(att, (1, 0))
 
-print(feats)    
+#feats = sio.loadmat('ucf101_i3d/i3d.mat')
+
+#print(feats)    
 print(att.shape)
