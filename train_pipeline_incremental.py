@@ -56,7 +56,7 @@ std_start_time = time.time()
 b1=0.5
 b2=0.999
 batch_size = 100
-input_dim = 2048
+input_dim = 8192
 semantic_dim = 300
 noise_dim = 1024
 increment = args.increment_epochs
@@ -127,13 +127,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_epochs (int, optional): Number of epochs to train for.
     """
 
-    model = ConvLSTM(
-        latent_dim=512,
-        lstm_layers=1,
-        hidden_dim=1024,
-        bidirectional=True,
-        attention=True,
-    )
 
     classifier = Classifier(num_classes = num_classes)
     generator = Modified_Generator(semantic_dim, noise_dim)
@@ -145,7 +138,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                        map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
         print("Initializing weights from: {}...".format(
             os.path.join(load_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
-        model.load_state_dict(checkpoint['extractor_state_dict'])
+        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
         generator.load_state_dict(checkpoint['generator_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -156,7 +149,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         print("Initializing weights from: {}...".format(
             os.path.join(save_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
         
-        model.load_state_dict(checkpoint['extractor_state_dict'])
+        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
         generator.load_state_dict(checkpoint['generator_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -179,10 +172,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_classes = num_classes + increment_classes
 
         #model1 = deepcopy(model)
-        #classifier1 = deepcopy(classifier)
+        classifier1 = deepcopy(classifier)
         generator1 = deepcopy(generator)
-        #discriminator1 = deepcopy(discriminator)
-        #model1, classifier1, generator1, discriminator1 = model1.cuda(), classifier1.cuda(), generator1.cuda(), discriminator1.cuda()
+        discriminator1 = deepcopy(discriminator)
+        classifier1, generator1, discriminator1 = classifier1.cuda(), generator1.cuda(), discriminator1.cuda()
         print('Copied previous model')
 
         in_features = classifier.classifier_out.in_features
@@ -191,32 +184,28 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         classifier.classifier_out = nn.Linear(in_features, num_classes + increment_classes, bias = False)
         kaiming_normal_init(classifier.classifier_out.weight)
         classifier.classifier_out.weight.data[:num_classes] = weights
-            #model1.eval()
-            #classifier1.eval()
+            
         print('Updated Classifier With Number Of Classes %d' % (num_classes + increment_classes))
             
         train_dataset = video_dataset(train = True, classes = all_classes[num_classes:increment_classes + num_classes])
         train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         test_dataset = video_dataset(train = False, classes = all_classes[num_classes:increment_classes + num_classes])
         test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+
+        train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[num_classes:increment_classes+num_classes])
+
         print('Classes used in the new dataset: %d to %d' % (num_classes, num_classes+increment_classes))
 
-        old_train_dataset = old_video_dataset(train = True, classes = all_classes[:num_classes], num_classes = num_classes, samples = 10)
-        old_train_dataloader = DataLoader(old_train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+        #old_train_dataset = old_video_dataset(train = True, classes = all_classes[:num_classes], num_classes = num_classes, samples = 10)
+        #old_train_dataloader = DataLoader(old_train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         
-        #old_train_dataset = video_dataset(train = True, classes = all_classes[:num_classes])
-        #old_train_dataloader = DataLoader(old_train_dataset, batch_size = batch_size, shuffle = True, num_workers = 4)
+        #old_test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
+        #old_test_dataloader = DataLoader(old_test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
-        old_test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
-        old_test_dataloader = DataLoader(old_test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
 
-        trainval_loaders = {'train': train_dataloader, 'val': test_dataloader}
-        trainval_sizes = {x: len(trainval_loaders[x].dataset) for x in ['train', 'val']}
-        test_size = len(test_dataloader.dataset)
-        lab_list = []
-        pred_list = []
 
         att = np.load("../npy_files/seen_semantic_51.npy")
         att = torch.tensor(att).cuda()    
