@@ -131,8 +131,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     #    attention=True,
     #)
 
-    model = generate_model()
-    model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
+    #model = generate_model()
+    #model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
  
     generator = Modified_Generator(semantic_dim, noise_dim)
     discriminator = Discriminator(input_dim = 8192)
@@ -198,11 +198,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 running_loss = 0.0
                 running_corrects = 0.0
-            #gen_running_corrects = 0.0
 
-                #model.eval()
-            #generator.train()
-            #discriminator.train()
                 classifier.train()
 
                 for (inputs, labels) in (trainval_loaders["train"]):
