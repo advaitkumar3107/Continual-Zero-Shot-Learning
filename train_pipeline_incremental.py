@@ -207,15 +207,17 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
 
 
-        att = np.load("../npy_files/seen_semantic_51.npy")
-        att = torch.tensor(att).cuda()    
+        feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+        att = feats['att']
+        att = np.transpose(att, (1,0))
+        att = torch.tensor(att).cuda()  
 
         adversarial_loss = torch.nn.BCELoss().to(device)    
 
         if cuda:
             model = model.to(device)
             classifier = classifier.to(device)
-            #classifier1 = classifier1.to(device)
+            classifier1 = classifier1.to(device)
             generator = generator.to(device)
             generator1 = generator1.to(device)
             discriminator = discriminator.to(device)
