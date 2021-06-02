@@ -43,8 +43,6 @@ parser.add_argument('--total_classes', type = int, default = 70, help = 'total n
 parser.add_argument('--incremental_classes', type = int, default = 10, help = 'number of classes to add at each increment')
 parser.add_argument('--test_interval', type = int, default = 1, help = 'number of epochs after which to test the model')
 parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0 for testing')
-parser.add_argument('--importance', type = int, default = 100, help = 'multiplying factor for distillation loss')
-parser.add_argument('--distillation', type = bool, default = True, help = 'whether to use distillation or not')
 args = parser.parse_args()
 
 gpu_id = str(args.gpu)
