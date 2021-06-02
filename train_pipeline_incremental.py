@@ -16,9 +16,11 @@ from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
+import torch.nn.Functional as F
 import requests
 from nets import *
 from video_data_loader import video_dataset, old_video_dataset
+import scipy.io as sio
 
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
@@ -111,6 +113,12 @@ def MultiClassCrossEntropy(logits, labels, T):
     outputs = -torch.mean(outputs, dim=0, keepdim=False)
     return Variable(outputs.data, requires_grad=True).cuda()
 
+def CustomKLDiv(logits, labels, T):
+    logits = torch.log_softmax(logits/T, dim=1)
+    labels = torch.softmax(labels/T, dim=1)
+    kldiv = nn.KLDivLoss()(logits,labels)
+    return kldiv
+
 def kaiming_normal_init(m):
     if isinstance(m, nn.Conv2d):
         nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
@@ -187,25 +195,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             
         print('Updated Classifier With Number Of Classes %d' % (num_classes + increment_classes))
             
-        train_dataset = video_dataset(train = True, classes = all_classes[num_classes:increment_classes + num_classes])
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-        test_dataset = video_dataset(train = False, classes = all_classes[num_classes:increment_classes + num_classes])
-        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-
         train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[num_classes:increment_classes+num_classes])
 
         print('Classes used in the new dataset: %d to %d' % (num_classes, num_classes+increment_classes))
-
-        #old_train_dataset = old_video_dataset(train = True, classes = all_classes[:num_classes], num_classes = num_classes, samples = 10)
-        #old_train_dataloader = DataLoader(old_train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
         
-        #old_test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
-        #old_test_dataloader = DataLoader(old_test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-
         old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
-
 
         feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
         att = feats['att']
@@ -215,12 +211,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         adversarial_loss = torch.nn.BCELoss().to(device)    
 
         if cuda:
-            model = model.to(device)
             classifier = classifier.to(device)
             classifier1 = classifier1.to(device)
             generator = generator.to(device)
             generator1 = generator1.to(device)
             discriminator = discriminator.to(device)
+            discriminator1 = discriminator.to(device)
 
         num_epochs = num_epochs + increment
         num_lr_stages = num_epochs/len(lr)
@@ -233,56 +229,40 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_old_corrects = 0.0
                 running_new_corrects = 0.0
 
-                optimizer = torch.optim.Adam(list(model.parameters())+list(classifier.parameters()), lr=lr[int(epoch/num_lr_stages)])
+                optimizer = torch.optim.Adam(list(classifier.parameters()), lr=lr[int(epoch/num_lr_stages)])
 
                 model.train()
                 classifier.train()
-                #generator.train()
-                #discriminator.train()
 
-                for indices, inputs, labels in (trainval_loaders["train"]):
-                    inputs = inputs.permute(0,2,1,3,4)
-                    image_sequences = Variable(inputs.to(device), requires_grad=True)
-                    labels = Variable(labels.to(device), requires_grad=False)                
-
-                    model.lstm.reset_hidden_state()
+                for (inputs, labels) in (trainval_loaders["train"]):
+                    feats = Variable(inputs.to(device), requires_grad = True).float()
+                    labels = Variable(labels.to(device), requires_grad=False).long()              
+ 
                     loop_batch_size = len(inputs)
 
 ############### Begin Incremental Training Of Conv-LSTM Model ############################
                     optimizer.zero_grad()
                     old_labels = Variable(LongTensor(np.random.randint(0, num_classes, loop_batch_size))).cuda()
-                    old_semantic = att[old_labels].cuda()
                     noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
                    
                     old_features = generator1(old_semantic.float(), noise)
-                    new_features = model(image_sequences)
+                    new_features = feats
                     new_logits = classifier(new_features)
                     old_logits = classifier(old_features)
 
-                    _, dataset_inputs, dataset_labels = next(iter(old_train_dataloader))
-                    dataset_inputs = dataset_inputs.permute(0,2,1,3,4)
-                    image_sequences = Variable(dataset_inputs.to(device), requires_grad=True)
-                    dataset_labels = Variable(dataset_labels.to(device), requires_grad=False)                
-
-                    model.lstm.reset_hidden_state()
-                    loop_batch_size = len(dataset_inputs)
-
-                    dataset_logits = classifier(model(image_sequences))
+                    expected_logits = classifier1(new_features)
                     
-                    #loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels) + 25*MultiClassCrossEntropy(old_logits, new_logits, 0.5)
-                    loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels) + 25*MultiClassCrossEntropy(old_logits, new_logits, 0.5)
+                    loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5) 
                     loss.backward()
                     optimizer.step()                    
     
                     _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)
-                    _, dataset_predictions = torch.max(torch.softmax(dataset_logits, dim = 1), dim = 1, keepdim = False)
                     _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
                     running_old_corrects += torch.sum(old_predictions == old_labels.data) 
-                    running_old_corrects += torch.sum(dataset_predictions == dataset_labels.data)
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                old_epoch_acc = running_old_corrects.double() / (2*trainval_sizes['train'])
-                new_epoch_acc = running_new_corrects.double() / trainval_sizes['train']
+                old_epoch_acc = running_old_corrects.double() / old_len_train
+                new_epoch_acc = running_new_corrects.double() / len_train
 
                 words = 'data/old_train_acc_epoch' + str(i)
                 writer.add_scalar(words, old_epoch_acc, epoch)
@@ -299,41 +279,35 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects = 0.0
                     running_new_corrects = 0.0
     
-                    for indices, inputs, labels in test_dataloader:
-                        inputs = inputs.permute(0,2,1,3,4)
-                        image_sequences = Variable(inputs.to(device), requires_grad=True)
-                        labels = Variable(labels.to(device), requires_grad=False)                
+                    for (inputs, labels) in test_dataloader:
+                        feats = Variable(inputs.to(device), requires_grad=True).float()
+                        labels = Variable(labels.to(device), requires_grad=False).long()                
 
-                        model.lstm.reset_hidden_state()
                         loop_batch_size = len(inputs)
                    
-                        new_features = model(image_sequences)
-                        new_logits = classifier(new_features)
+                        new_logits = classifier(feats)
      
                         _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                    new_epoch_acc = running_new_corrects.double() / len(test_dataloader.dataset)
+                    new_epoch_acc = running_new_corrects.double() / len_test
 
                     words = 'data/new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
 
 
-                    for indices, inputs, labels in old_test_dataloader:
-                        inputs = inputs.permute(0,2,1,3,4)
-                        image_sequences = Variable(inputs.to(device), requires_grad=True)
-                        labels = Variable(labels.to(device), requires_grad=False)                
+                    for (inputs, labels) in old_test_dataloader:
+                        feats = Variable(inputs.to(device), requires_grad=True).float()
+                        labels = Variable(labels.to(device), requires_grad=False).long()                
 
-                        model.lstm.reset_hidden_state()
                         loop_batch_size = len(inputs)
                    
-                        old_features = model(image_sequences)
-                        old_logits = classifier(old_features)
+                        old_logits = classifier(feats)
      
                         _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)         
                         running_old_corrects += torch.sum(old_predictions == labels.data)
 
-                    old_epoch_acc = running_old_corrects.double() / len(old_test_dataloader.dataset)
+                    old_epoch_acc = running_old_corrects.double() / old_len_test
 
                     words = 'data/old_test_acc_epoch' + str(i)
                     writer.add_scalar(words, old_epoch_acc, epoch)
@@ -355,15 +329,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 classifier.train()
                 generator1.eval()
                 generator.train()
+                discriminator1.eval()
                 discriminator.train()
 
-                for indices, inputs, labels in (trainval_loaders["train"]):
-                    inputs = inputs.permute(0,2,1,3,4)
-                    image_sequences = Variable(inputs.to(device), requires_grad=True)
-                    labels = Variable(labels.to(device), requires_grad=False)                
+                for (inputs, labels) in (trainval_loaders["train"]):
+                    feats = Variable(inputs.to(device), requires_grad=True).float()
+                    labels = Variable(labels.to(device), requires_grad=False).long()                
 
-                    model.lstm.reset_hidden_state()
-                    loop_batch_size = len(inputs)
+                    loop_batch_size = len(feats)
 
                     valid = Variable(FloatTensor(loop_batch_size, 1).fill_(1.0), requires_grad=False).cuda()
                     fake = Variable(FloatTensor(loop_batch_size, 1).fill_(0.0), requires_grad=False).cuda()
@@ -374,25 +347,28 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     optimizer_D.zero_grad()
 
 ############## New Dataset training #######################
-                    true_features_2048 = model(image_sequences)
+                    true_features_2048 = feats
                     validity_real = discriminator(true_features_2048.detach()).view(-1)
-                    d_real_loss = adversarial_loss(validity_real, valid)
+                    validity_real_expected = discriminator1(true_features_2048.detach()).view(-1)
+                    d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_expected, 0.5)
                     d_real_loss.backward(retain_graph = True)
 
 ############## All Fake Batch Training #######################
                     gen_imgs = generator(semantic_true.float(), noise)
                     validity_fake = discriminator(gen_imgs.detach()).view(-1)
-                    d_fake_loss = adversarial_loss(validity_fake, fake)
+                    validity_fake_expected = discriminator1(gen_imgs.detach()).view(-1)
+                    d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5)
                     d_fake_loss.backward(retain_graph = True)            
                     optimizer_D.step()
 
 ############## Generator training ########################
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
-                    g_loss = adversarial_loss(validity, valid) + 25*nn.MSELoss()(gen_imgs, true_features_2048)
+                    new_logits = classifier(gen_imgs)            
+                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()    
-                    new_logits = classifier(gen_imgs)            
+
 
 ############## Old Dataset Training ###########################
 
@@ -417,88 +393,18 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 ############## Generator training ########################
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
-                    g_loss = adversarial_loss(validity, valid) + 25*nn.MSELoss()(gen_imgs, true_features_2048)
+                    old_logits = classifier(gen_imgs)   
+                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(old_logits, old_labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()   
 
-                    #_, _, dataset_labels = next(iter(old_train_dataloader))
-                    #loop_batch_size = len(dataset_labels)
-                    #dataset_labels = dataset_labels.cuda()
-                    #noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
-                    #semantic_true = att[dataset_labels].cuda()
- 
-                    #valid = Variable(FloatTensor(loop_batch_size, 1).fill_(1.0), requires_grad=False).cuda()
-                    #fake = Variable(FloatTensor(loop_batch_size, 1).fill_(0.0), requires_grad=False).cuda()
-
-                    #optimizer_D.zero_grad()
-
-                    #dataset_true_features_2048 = generator1(semantic_true.float(), noise)
-                    #validity_real = discriminator(dataset_true_features_2048.detach()).view(-1)
-                    #d_real_loss = adversarial_loss(validity_real, valid)
-                    #d_real_loss.backward(retain_graph = True)
-
-############## All Fake Batch Training #######################
-                    #dataset_imgs = generator(semantic_true.float(), noise)
-                    #validity_fake = discriminator(dataset_imgs.detach()).view(-1)
-                    #d_fake_loss = adversarial_loss(validity_fake, fake)
-                    #d_fake_loss.backward(retain_graph = True)            
-                    #optimizer_D.step()
-
-############## Generator training ########################
-                    #optimizer_G.zero_grad()
-                    #validity = discriminator(dataset_imgs).view(-1)
-                    #g_loss = adversarial_loss(validity, valid) + 25*nn.MSELoss()(dataset_true_features_2048, dataset_imgs)
-                    #g_loss.backward(retain_graph = True)
-                    #optimizer_G.step()   
-
-                    #dataset_logits = classifier(dataset_imgs)
-                    old_logits = classifier(gen_imgs)   
-
-                    #if (args.distillation):
-                        #model1.lstm.reset_hidden_state()
-                        #dist_target = model1(image_sequences)
-                        #dist_target1 = classifier1(dist_target)
-                        #logits_dist = predictions[:, :num_classes]
-                        #dist_loss = MultiClassCrossEntropy(logits_dist, dist_target1, 0.5)
-                        #loss = args.importance*dist_loss + loss
-                        #optimizer.zero_grad()
-                        #loss.backward(retain_graph = True)
-                        #optimizer.step()
-
-                        #gen_imgs1 = generator1(semantic.float(), noise)
-                        #gen_imgs1 = generator1(semantic_true.float(), noise)
-                        #gen_dist_loss = MultiClassCrossEntropy(gen_imgs, gen_imgs1, 0.5)
-                        #gen_dist_loss = nn.MSELoss()(gen_imgs, gen_imgs1)
-                        #loss = args.importance*gen_dist_loss
-                        #optimizer_G1.zero_grad()
-                        #loss.backward(retain_graph = True)
-                        #optimizer_G1.step()
-
-                        #validity_fake1 = discriminator1(gen_imgs1.detach()).view(-1)
-                        #validity_real1 = discriminator1(dist_target).view(-1)
-                        #fake_dist_loss = nn.MSELoss()(validity_fake1, validity_fake)
-                        #real_dist_loss = nn.MSELoss()(validity_real1, validity_real)
-                        #loss = args.importance*(fake_dist_loss + real_dist_loss)
-                        #optimizer_D1.zero_grad()
-                        #loss.backward()
-                        #optimizer_D1.step()
-
-                    #else:
-                        #loss = cls_loss
-                        #optimizer.zero_grad()
-                        #loss.backward()
-                        #optimizer.step()
-
-
                     _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)
                     _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
-                    #_, dataset_predictions = torch.max(torch.softmax(dataset_logits, dim = 1), dim = 1, keepdim = False)         
                     running_old_corrects += torch.sum(old_predictions == old_labels.data)
                     running_new_corrects += torch.sum(new_predictions == labels.data)
-                    #running_old_corrects += torch.sum(dataset_predictions == dataset_labels.data) 
 
-                old_epoch_acc = running_old_corrects.double() / (trainval_sizes['train'])
-                new_epoch_acc = running_new_corrects.double() / trainval_sizes['train']
+                old_epoch_acc = running_old_corrects.double() / old_len_train
+                new_epoch_acc = running_new_corrects.double() / len_train
 
                 words = 'data/gen_old_train_acc_epoch' + str(i)
                 writer.add_scalar(words, old_epoch_acc, epoch)
@@ -517,7 +423,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects = 0.0
                     running_new_corrects = 0.0
     
-                    for indices, inputs, labels in test_dataloader:
+                    for (inputs, labels) in test_dataloader:
                         labels = Variable(labels.to(device), requires_grad=False)                
                         loop_batch_size = len(inputs)
                         noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
@@ -529,13 +435,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                    new_epoch_acc = running_new_corrects.double() / len(test_dataloader.dataset)
+                    new_epoch_acc = running_new_corrects.double() / len_test
 
                     words = 'data/gen_new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
 
 
-                    for indices, inputs, labels in old_test_dataloader:
+                    for (inputs, labels) in old_test_dataloader:
                         labels = Variable(labels.to(device), requires_grad=False)                
                         loop_batch_size = len(inputs)
                         noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
@@ -547,7 +453,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)         
                         running_old_corrects += torch.sum(old_predictions == labels.data)
 
-                    old_epoch_acc = running_old_corrects.double() / len(old_test_dataloader.dataset)
+                    old_epoch_acc = running_old_corrects.double() / old_len_test
 
                     words = 'data/gen_old_test_acc_epoch' + str(i)
                     writer.add_scalar(words, old_epoch_acc, epoch)
@@ -559,11 +465,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 if (epoch % save_epoch == save_epoch - 1):
                     save_path = os.path.join(save_dir, saveName + '_increment_' + str(i) + '_epoch-' + str(epoch) + '.pth.tar')
                     torch.save({
-                        'extractor_state_dict': model.state_dict(),
                         'classifier_state_dict': classifier.state_dict(),
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
-                        'num_classes': num_classes,
                     }, save_path)
                     print("Save model at {}\n".format(save_path))
 
