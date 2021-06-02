@@ -16,11 +16,12 @@ from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
-import torch.nn.Functional as F
+import torch.nn.functional as F
 import requests
-from nets import *
+from models.nets import *
 from video_data_loader import video_dataset, old_video_dataset
 import scipy.io as sio
+from dataloader import create_data_loader
 
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
@@ -73,7 +74,7 @@ num_classes = args.num_classes
 total_classes = args.total_classes
 increment_classes = args.incremental_classes
 
-all_classes = np.arange(total_classes)
+all_classes = range(total_classes)
 
 n_cl_temp = 0
 class_map = {}
@@ -111,9 +112,9 @@ def MultiClassCrossEntropy(logits, labels, T):
     outputs = -torch.mean(outputs, dim=0, keepdim=False)
     return Variable(outputs.data, requires_grad=True).cuda()
 
-def CustomKLDiv(logits, labels, T):
-    logits = torch.log_softmax(logits/T, dim=1)
-    labels = torch.softmax(labels/T, dim=1)
+def CustomKLDiv(logits, labels, T, dim = 1):
+    logits = torch.log_softmax(logits/T, dim=dim)
+    labels = torch.softmax(labels/T, dim=dim)
     kldiv = nn.KLDivLoss()(logits,labels)
     return kldiv
 
@@ -162,8 +163,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     else:
         print("Training {} from scratch...".format(modelName))
-
-    print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters()) / 1000000.0))
 
     log_dir = os.path.join(save_dir)
     writer = SummaryWriter(log_dir=log_dir)
@@ -229,10 +228,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 optimizer = torch.optim.Adam(list(classifier.parameters()), lr=lr[int(epoch/num_lr_stages)])
 
-                model.train()
                 classifier.train()
 
-                for (inputs, labels) in (trainval_loaders["train"]):
+                for (inputs, labels) in train_dataloader:
                     feats = Variable(inputs.to(device), requires_grad = True).float()
                     labels = Variable(labels.to(device), requires_grad=False).long()              
  
@@ -240,8 +238,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 ############### Begin Incremental Training Of Conv-LSTM Model ############################
                     optimizer.zero_grad()
-                    old_labels = Variable(LongTensor(np.random.randint(0, num_classes, loop_batch_size))).cuda()
+                    old_labels = Variable(LongTensor(np.random.randint(0, num_classes, loop_batch_size))).long().cuda()
                     noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
+
+                    old_semantic = att[old_labels]
                    
                     old_features = generator1(old_semantic.float(), noise)
                     new_features = feats
@@ -259,8 +259,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects += torch.sum(old_predictions == old_labels.data) 
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                old_epoch_acc = running_old_corrects.double() / old_len_train
-                new_epoch_acc = running_new_corrects.double() / len_train
+                old_epoch_acc = running_old_corrects.item() / old_len_train
+                new_epoch_acc = running_new_corrects.item() / len_train
 
                 words = 'data/old_train_acc_epoch' + str(i)
                 writer.add_scalar(words, old_epoch_acc, epoch)
@@ -271,7 +271,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    model.eval()
                     classifier.eval()
                     
                     running_old_corrects = 0.0
@@ -288,7 +287,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                    new_epoch_acc = running_new_corrects.double() / len_test
+                    new_epoch_acc = running_new_corrects.item() / len_test
 
                     words = 'data/new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
@@ -305,7 +304,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)         
                         running_old_corrects += torch.sum(old_predictions == labels.data)
 
-                    old_epoch_acc = running_old_corrects.double() / old_len_test
+                    old_epoch_acc = running_old_corrects.item() / old_len_test
 
                     words = 'data/old_test_acc_epoch' + str(i)
                     writer.add_scalar(words, old_epoch_acc, epoch)
@@ -323,14 +322,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
                 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr[0], betas=(b1, b2))
 
-                model.train()
                 classifier.train()
                 generator1.eval()
                 generator.train()
                 discriminator1.eval()
                 discriminator.train()
 
-                for (inputs, labels) in (trainval_loaders["train"]):
+                for (inputs, labels) in train_dataloader:
                     feats = Variable(inputs.to(device), requires_grad=True).float()
                     labels = Variable(labels.to(device), requires_grad=False).long()                
 
@@ -348,14 +346,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     true_features_2048 = feats
                     validity_real = discriminator(true_features_2048.detach()).view(-1)
                     validity_real_expected = discriminator1(true_features_2048.detach()).view(-1)
-                    d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_expected, 0.5)
+                    d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)
                     d_real_loss.backward(retain_graph = True)
 
 ############## All Fake Batch Training #######################
                     gen_imgs = generator(semantic_true.float(), noise)
                     validity_fake = discriminator(gen_imgs.detach()).view(-1)
                     validity_fake_expected = discriminator1(gen_imgs.detach()).view(-1)
-                    d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5)
+                    d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)
                     d_fake_loss.backward(retain_graph = True)            
                     optimizer_D.step()
 
@@ -401,8 +399,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects += torch.sum(old_predictions == old_labels.data)
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                old_epoch_acc = running_old_corrects.double() / old_len_train
-                new_epoch_acc = running_new_corrects.double() / len_train
+                old_epoch_acc = running_old_corrects.item() / old_len_train
+                new_epoch_acc = running_new_corrects.item() / len_train
 
                 words = 'data/gen_old_train_acc_epoch' + str(i)
                 writer.add_scalar(words, old_epoch_acc, epoch)
@@ -422,7 +420,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_new_corrects = 0.0
     
                     for (inputs, labels) in test_dataloader:
-                        labels = Variable(labels.to(device), requires_grad=False)                
+                        labels = Variable(labels.to(device), requires_grad=False).long()                
                         loop_batch_size = len(inputs)
                         noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
                    
@@ -433,14 +431,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                    new_epoch_acc = running_new_corrects.double() / len_test
+                    new_epoch_acc = running_new_corrects.item() / len_test
 
                     words = 'data/gen_new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
 
 
                     for (inputs, labels) in old_test_dataloader:
-                        labels = Variable(labels.to(device), requires_grad=False)                
+                        labels = Variable(labels.to(device), requires_grad=False).long()                
                         loop_batch_size = len(inputs)
                         noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
                    
@@ -451,7 +449,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)         
                         running_old_corrects += torch.sum(old_predictions == labels.data)
 
-                    old_epoch_acc = running_old_corrects.double() / old_len_test
+                    old_epoch_acc = running_old_corrects.item() / old_len_test
 
                     words = 'data/gen_old_test_acc_epoch' + str(i)
                     writer.add_scalar(words, old_epoch_acc, epoch)
@@ -478,7 +476,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_loss = 0.0
                 running_corrects = 0.0
 
-                model.eval()
                 classifier.eval()
 
                 for indices, inputs, labels in test_dataloader:
@@ -499,7 +496,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_corrects += torch.sum(predictions == labels.data)
 
                 epoch_loss = running_loss / len(test_dataloader)
-                epoch_acc = running_corrects.double() / len(test_dataloader)
+                epoch_acc = running_corrects.item() / len(test_dataloader)
 
                 writer.add_scalar('data/test_acc {}'.format(i), epoch_loss, epoch)
                 print("[test] Epoch: {}/{} Testing Acc: {}".format(epoch+1, num_epochs, epoch_acc))
@@ -508,7 +505,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_loss = 0.0
                 running_corrects = 0.0
 
-                model.eval()
                 classifier.eval()
 
                 for indices, inputs, labels in old_dataloader:
@@ -529,7 +525,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_corrects += torch.sum(predictions == labels.data)
 
                 epoch_loss = running_loss / len(old_dataloader)
-                epoch_acc = running_corrects.double() / len(old_dataloader)
+                epoch_acc = running_corrects.item() / len(old_dataloader)
 
                 writer.add_scalar('data/old_acc {}'.format(i), epoch_loss, epoch)
                 print("[test] Epoch: {}/{} Old Acc: {}".format(epoch+1, num_epochs, epoch_acc))
