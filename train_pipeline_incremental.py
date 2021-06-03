@@ -21,7 +21,7 @@ import requests
 from models.nets import *
 from video_data_loader import video_dataset, old_video_dataset
 import scipy.io as sio
-from dataloader import create_data_loader
+from dataloader import create_data_loader, create_old_data_loader
 
 
 def variable(t: torch.Tensor, use_cuda=True, **kwargs):
@@ -196,7 +196,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
         print('Classes used in the new dataset: %d to %d' % (num_classes, num_classes+increment_classes))
         
-        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
+        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
 
@@ -249,8 +249,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     old_logits = classifier(old_features)
 
                     expected_logits = classifier1(new_features)
-                    
-                    loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5) 
+                    expected_old_logits = classifier1(old_features)
+
+                    (dataset_inputs, dataset_labels) = next(iter(old_train_dataloader))
+                     
+
+                    loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) +  + 10*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5) + 10*CustomKLDiv(old_logits[:,:num_classes], expected_old_logits, 0.5)
+                    #loss = nn.CrossEntropyLoss()(new_logits, labels) + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)  
                     loss.backward()
                     optimizer.step()                    
     
@@ -268,7 +273,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 writer.add_scalar(words, new_epoch_acc, epoch)
 
                 print("Set: {} Epoch: {}/{} Train Old Acc: {} Train New Acc: {}".format(i, epoch+1, num_epochs, old_epoch_acc, new_epoch_acc))
-
+                #print("Set: {} Epoch: {}/{} Train New Acc: {}".format(i, epoch+1, num_epochs, new_epoch_acc))
 
                 if useTest and epoch % test_interval == (test_interval - 1):
                     classifier.eval()
