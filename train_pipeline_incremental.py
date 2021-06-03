@@ -252,10 +252,17 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     expected_old_logits = classifier1(old_features)
 
                     (dataset_inputs, dataset_labels) = next(iter(old_train_dataloader))
-                     
+                    feats = Variable(dataset_inputs.to(device), requires_grad = True).float()
+                    dataset_labels = Variable(dataset_labels.to(device), requires_grad=False).long()
+                    dataset_logits = classifier(feats)
 
-                    loss = nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) +  + 10*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5) + 10*CustomKLDiv(old_logits[:,:num_classes], expected_old_logits, 0.5)
-                    #loss = nn.CrossEntropyLoss()(new_logits, labels) + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)  
+                    dataset_cls_loss = nn.CrossEntropyLoss()(dataset_logits, dataset_labels)
+                    new_cls_loss = nn.CrossEntropyLoss()(new_logits, labels)
+                    old_cls_loss = nn.CrossEntropyLoss()(old_logits, old_labels)
+
+                    #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
+                    loss = dataset_cls_loss + new_cls_loss
+                    
                     loss.backward()
                     optimizer.step()                    
     
@@ -289,7 +296,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                    
                         new_logits = classifier(feats)
      
-                        _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
+                        _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)  
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
                     new_epoch_acc = running_new_corrects.item() / len_test
