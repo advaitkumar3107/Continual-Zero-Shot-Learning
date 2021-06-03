@@ -20,14 +20,12 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
 from video_data_loader import video_dataset
-from dataloader import create_data_loader
+from dataloader import create_data_loader, create_old_data_loader
 import scipy.io as sio
 
-feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
-att = feats['att']
-att = np.transpose(att, (1, 0))
 
-#feats = sio.loadmat('ucf101_i3d/i3d.mat')
+classes = range(70)
 
-#print(feats)    
-print(att.shape)
+train_loader, test_loader, len_train, len_test = create_old_data_loader('ucf101_i3d/i3d.mat', classes[:50])
+
+print(len_train)
