@@ -261,13 +261,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     old_cls_loss = nn.CrossEntropyLoss()(old_logits, old_labels)
 
                     #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    loss = dataset_cls_loss + new_cls_loss
+                    #loss = dataset_cls_loss + 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
+                    loss = 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
                     
                     loss.backward()
                     optimizer.step()                    
     
                     _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)
-                    _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)         
+                    _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False) 
                     running_old_corrects += torch.sum(old_predictions == old_labels.data) 
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
@@ -300,7 +301,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
                     new_epoch_acc = running_new_corrects.item() / len_test
-
+                    print(new_predictions)
                     words = 'data/new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
 
