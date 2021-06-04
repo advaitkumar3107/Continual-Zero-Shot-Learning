@@ -198,6 +198,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         
         old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
+        optimizer = torch.optim.Adam(classifier.parameters(), lr=lr[0])
+        optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
+        optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr[0], betas=(b1, b2))
+
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
 
         feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
@@ -226,18 +230,17 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_old_corrects = 0.0
                 running_new_corrects = 0.0
 
-                optimizer = torch.optim.Adam(list(classifier.parameters()), lr=lr[int(epoch/num_lr_stages)])
-
                 classifier.train()
 
                 for (inputs, labels) in train_dataloader:
+                    optimizer.zero_grad()
+
                     feats = Variable(inputs.to(device), requires_grad = True).float()
                     labels = Variable(labels.to(device), requires_grad=False).long()              
  
                     loop_batch_size = len(inputs)
 
 ############### Begin Incremental Training Of Conv-LSTM Model ############################
-                    optimizer.zero_grad()
                     old_labels = Variable(LongTensor(np.random.randint(0, num_classes, loop_batch_size))).long().cuda()
                     noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim)))).cuda()
 
@@ -260,10 +263,10 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     new_cls_loss = nn.CrossEntropyLoss()(new_logits, labels)
                     old_cls_loss = nn.CrossEntropyLoss()(old_logits, old_labels)
 
-                    #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
+                    loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
                     #loss = dataset_cls_loss + 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    loss = 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    
+                    #loss = 100*new_cls_loss
+  
                     loss.backward()
                     optimizer.step()                    
     
@@ -290,10 +293,11 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_new_corrects = 0.0
     
                     for (inputs, labels) in test_dataloader:
-                        feats = Variable(inputs.to(device), requires_grad=True).float()
+                        feats = Variable(inputs.to(device), requires_grad=False).float()
                         labels = Variable(labels.to(device), requires_grad=False).long()                
 
-                        loop_batch_size = len(inputs)
+                        #print(labels)
+                        loop_batch_size = len(labels)
                    
                         new_logits = classifier(feats)
      
@@ -301,7 +305,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         running_new_corrects += torch.sum(new_predictions == labels.data)
 
                     new_epoch_acc = running_new_corrects.item() / len_test
-                    print(new_predictions)
                     words = 'data/new_test_acc_epoch' + str(i)
                     writer.add_scalar(words, new_epoch_acc, epoch)
 
@@ -331,9 +334,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 running_old_corrects = 0.0
                 running_new_corrects = 0.0
-
-                optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
-                optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr[0], betas=(b1, b2))
 
                 classifier.train()
                 generator1.eval()
