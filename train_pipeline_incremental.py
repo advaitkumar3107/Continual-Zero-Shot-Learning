@@ -251,8 +251,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                     #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
                     #loss = dataset_cls_loss + 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    loss = 100*new_cls_loss + 10*old_cls_loss
-  
+                    #loss = 100*new_cls_loss + 10*old_cls_loss        Used for UCF101
+                    loss = 100*(new_cls_loss + old_cls_loss)
+
                     loss.backward()
                     optimizer.step()                    
     
@@ -346,14 +347,16 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     true_features_2048 = feats
                     validity_real = discriminator(true_features_2048.detach()).view(-1)
                     validity_real_expected = discriminator1(true_features_2048.detach()).view(-1)
-                    d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)
+                    #d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)  Used for UCF101
+                    d_real_loss = 5*adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)
                     d_real_loss.backward(retain_graph = True)
 
 ############## All Fake Batch Training #######################
                     gen_imgs = generator(semantic_true.float(), noise)
                     validity_fake = discriminator(gen_imgs.detach()).view(-1)
                     validity_fake_expected = discriminator1(gen_imgs.detach()).view(-1)
-                    d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)
+                    #d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)  Used for UCF101
+                    d_fake_loss = 5*adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)
                     d_fake_loss.backward(retain_graph = True)            
                     optimizer_D.step()
 
@@ -361,7 +364,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
                     new_logits = classifier(gen_imgs)            
-                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
+                    #g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) Used for UCF101
+                    g_loss = 5*adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()    
 
