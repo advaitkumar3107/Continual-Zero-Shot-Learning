@@ -198,7 +198,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         
         old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
 
-        optimizer = torch.optim.Adam(classifier.parameters(), lr=lr[0])
+        optimizer = torch.optim.Adam(classifier.parameters(), lr=lr[0], betas=(b1,b2))
         optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
         optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr[0], betas=(b1, b2))
 
@@ -235,7 +235,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 for (inputs, labels) in train_dataloader:
                     optimizer.zero_grad()
 
-                    feats = Variable(inputs.to(device), requires_grad = True).float()
+                    feats = Variable(inputs.to(device), requires_grad=True).float()
                     labels = Variable(labels.to(device), requires_grad=False).long()              
  
                     loop_batch_size = len(inputs)
@@ -251,21 +251,21 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     new_logits = classifier(new_features)
                     old_logits = classifier(old_features)
 
-                    expected_logits = classifier1(new_features)
-                    expected_old_logits = classifier1(old_features)
+                    #expected_logits = classifier1(new_features)
+                    #expected_old_logits = classifier1(old_features)
 
-                    (dataset_inputs, dataset_labels) = next(iter(old_train_dataloader))
-                    feats = Variable(dataset_inputs.to(device), requires_grad = True).float()
-                    dataset_labels = Variable(dataset_labels.to(device), requires_grad=False).long()
-                    dataset_logits = classifier(feats)
+                    #(dataset_inputs, dataset_labels) = next(iter(old_train_dataloader))
+                    #feats = Variable(dataset_inputs.to(device), requires_grad = True).float()
+                    #dataset_labels = Variable(dataset_labels.to(device), requires_grad=False).long()
+                    #dataset_logits = classifier(feats)
 
-                    dataset_cls_loss = nn.CrossEntropyLoss()(dataset_logits, dataset_labels)
+                    #dataset_cls_loss = nn.CrossEntropyLoss()(dataset_logits, dataset_labels)
                     new_cls_loss = nn.CrossEntropyLoss()(new_logits, labels)
                     old_cls_loss = nn.CrossEntropyLoss()(old_logits, old_labels)
 
-                    loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
+                    #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
                     #loss = dataset_cls_loss + 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    #loss = 100*new_cls_loss
+                    loss = 100*new_cls_loss + 10*old_cls_loss
   
                     loss.backward()
                     optimizer.step()                    
@@ -275,7 +275,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects += torch.sum(old_predictions == old_labels.data) 
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                old_epoch_acc = running_old_corrects.item() / old_len_train
+                old_epoch_acc = running_old_corrects.item() / len_train
                 new_epoch_acc = running_new_corrects.item() / len_train
 
                 words = 'data/old_train_acc_epoch' + str(i)
@@ -287,22 +287,23 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 #print("Set: {} Epoch: {}/{} Train New Acc: {}".format(i, epoch+1, num_epochs, new_epoch_acc))
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    classifier.eval()
+                    #classifier.eval()
                     
                     running_old_corrects = 0.0
                     running_new_corrects = 0.0
     
                     for (inputs, labels) in test_dataloader:
-                        feats = Variable(inputs.to(device), requires_grad=False).float()
-                        labels = Variable(labels.to(device), requires_grad=False).long()                
+                        with torch.no_grad():
+                            feats = inputs.to(device).float()
+                            labels = labels.to(device).long()                
 
-                        #print(labels)
-                        loop_batch_size = len(labels)
+                            #print(labels)
+                            loop_batch_size = len(feats)
                    
-                        new_logits = classifier(feats)
+                            probs = classifier(feats)
      
-                        _, new_predictions = torch.max(torch.softmax(new_logits, dim = 1), dim = 1, keepdim = False)  
-                        running_new_corrects += torch.sum(new_predictions == labels.data)
+                        _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+                        running_new_corrects += torch.sum(predictions == labels.data)
 
                     new_epoch_acc = running_new_corrects.item() / len_test
                     words = 'data/new_test_acc_epoch' + str(i)
@@ -310,7 +311,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                     for (inputs, labels) in old_test_dataloader:
-                        feats = Variable(inputs.to(device), requires_grad=True).float()
+                        feats = Variable(inputs.to(device), requires_grad=False).float()
                         labels = Variable(labels.to(device), requires_grad=False).long()                
 
                         loop_batch_size = len(inputs)
@@ -426,7 +427,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    classifier.eval()
+                    #classifier.eval()
                     generator.eval()
                     
                     running_old_corrects = 0.0
@@ -489,7 +490,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_loss = 0.0
                 running_corrects = 0.0
 
-                classifier.eval()
+                #classifier.eval()
 
                 for indices, inputs, labels in test_dataloader:
                     inputs = inputs.permute(0,2,1,3,4)
@@ -518,7 +519,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_loss = 0.0
                 running_corrects = 0.0
 
-                classifier.eval()
+                #classifier.eval()
 
                 for indices, inputs, labels in old_dataloader:
                     inputs = inputs.permute(0,2,1,3,4)
