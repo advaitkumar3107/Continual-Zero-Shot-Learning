@@ -44,6 +44,9 @@ parser.add_argument('--total_classes', type = int, default = 70, help = 'total n
 parser.add_argument('--incremental_classes', type = int, default = 10, help = 'number of classes to add at each increment')
 parser.add_argument('--test_interval', type = int, default = 1, help = 'number of epochs after which to test the model')
 parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0 for testing')
+parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
+parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
+
 args = parser.parse_args()
 
 gpu_id = str(args.gpu)
@@ -68,31 +71,13 @@ nTestInterval = args.test_interval # Run on test set every nTestInterval epochs
 snapshot = args.snapshot # Store a model every snapshot epochs
 lr = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5] # Learning rate
 
-dataset = 'ucf101' # Options: hmdb51 or ucf101
+dataset = 'hmdb51' # Options: hmdb51 or ucf101
 
 num_classes = args.num_classes
 total_classes = args.total_classes
 increment_classes = args.incremental_classes
 
 all_classes = range(total_classes)
-
-n_cl_temp = 0
-class_map = {}
-map_reverse = {}
-for i, cl in enumerate(all_classes):
-	if cl not in class_map:
-		class_map[cl] = int(n_cl_temp)
-		n_cl_temp += 1
-
-print ("Class map:", class_map)
-
-for cl, map_cl in class_map.items():
-	map_reverse[map_cl] = int(cl)
-
-print ("Map Reverse:", map_reverse)
-
-print ("all_classes:", all_classes)
-
 
 current_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 save_dir_root = current_dir
@@ -103,6 +88,9 @@ saveName = modelName + '-' + dataset
 
 FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
+
+att_path = args.att_path
+feat_path = args.feat_path
 
 def MultiClassCrossEntropy(logits, labels, T):
     labels = Variable(labels.data, requires_grad=False).cuda()
@@ -145,7 +133,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                        map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
         print("Initializing weights from: {}...".format(
             os.path.join(load_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
-        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
         generator.load_state_dict(checkpoint['generator_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -156,7 +143,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
         print("Initializing weights from: {}...".format(
             os.path.join(save_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
         
-        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
         generator.load_state_dict(checkpoint['generator_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -192,11 +178,11 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             
         print('Updated Classifier With Number Of Classes %d' % (num_classes + increment_classes))
             
-        train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[num_classes:increment_classes+num_classes])
+        train_dataloader, test_dataloader, len_train, len_test = create_data_loader(feat_path, all_classes[num_classes:increment_classes+num_classes])
 
         print('Classes used in the new dataset: %d to %d' % (num_classes, num_classes+increment_classes))
         
-        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader('ucf101_i3d/i3d.mat', all_classes[:num_classes])
+        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader(feat_path, all_classes[:num_classes])
 
         optimizer = torch.optim.Adam(classifier.parameters(), lr=lr[0], betas=(b1,b2))
         optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
@@ -204,7 +190,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
         print('Classes used in the old dataset: 0 to %d' % (num_classes))
 
-        feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+        feats = sio.loadmat(att_path)
         att = feats['att']
         att = np.transpose(att, (1,0))
         att = torch.tensor(att).cuda()  
