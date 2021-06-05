@@ -30,8 +30,8 @@ def create_data_loader(feat_path, classes, batch_size = 100):
             data_test.append([test_data[i,:], test_label[i]])
             len_test += 1
 
-    train_loader = DataLoader(data, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(data_test, batch_size = batch_size, shuffle = False)
+    train_loader = DataLoader(data, batch_size = batch_size, shuffle = True, drop_last = True)
+    test_loader = DataLoader(data_test, batch_size = batch_size, shuffle = False, drop_last = True)
 
     return train_loader, test_loader, len_train, len_test
 
@@ -67,8 +67,8 @@ def create_old_data_loader(feat_path, classes, batch_size = 100, num_samples = 1
             data_test.append([test_data[i,:], test_label[i]])
             len_test += 1
 
-    train_loader = DataLoader(data, batch_size = batch_size, shuffle = True)
-    test_loader = DataLoader(data_test, batch_size = batch_size, shuffle = False)
+    train_loader = DataLoader(data, batch_size = batch_size, shuffle = True, drop_last = True)
+    test_loader = DataLoader(data_test, batch_size = batch_size, shuffle = False, drop_last = True)
 
     return train_loader, test_loader, len_train, len_test
     
