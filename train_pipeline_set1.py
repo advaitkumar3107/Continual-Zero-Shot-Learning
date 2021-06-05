@@ -228,7 +228,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    model.eval()
+                    #model.eval()
                     classifier.eval()
                     start_time = timeit.default_timer()
 
