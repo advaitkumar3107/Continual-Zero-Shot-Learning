@@ -44,6 +44,7 @@ parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0
 parser.add_argument('--only_gan', type = int, default = 0, help = '1 if train only GAN. 0 for GAN + feature extractor')
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
+parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
 
 args = parser.parse_args()
 
@@ -68,29 +69,11 @@ nTestInterval = args.test_interval # Run on test set every nTestInterval epochs
 snapshot = args.snapshot # Store a model every snapshot epochs
 lr = 5e-4 # Learning rate
 
-dataset = 'ucf101' # Options: hmdb51 or ucf101
+dataset = 'hmdb51' # Options: hmdb51 or ucf101
 
 total_classes = args.total_classes
 
 all_classes = range(total_classes)
-
-n_cl_temp = 0
-class_map = {}
-map_reverse = {}
-for i, cl in enumerate(all_classes):
-	if cl not in class_map:
-		class_map[cl] = int(n_cl_temp)
-		n_cl_temp += 1
-
-print ("Class map:", class_map)
-
-for cl, map_cl in class_map.items():
-	map_reverse[map_cl] = int(cl)
-
-print ("Map Reverse:", map_reverse)
-
-print ("all_classes:", all_classes)
-
 
 current_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 save_dir_root = current_dir
@@ -101,6 +84,9 @@ saveName = modelName + '-' + dataset
 
 FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
+
+att_path = args.att_path
+feat_path = args.feat_path
 
 def MultiClassCrossEntropy(logits, labels, T):
     labels = Variable(labels.data, requires_grad=False).cuda()
@@ -125,17 +111,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_classes (int): Number of classes in the data
             num_epochs (int, optional): Number of epochs to train for.
     """
-    #model = ConvLSTM(
-    #    latent_dim=512,
-    #    lstm_layers=1,
-    #    hidden_dim=1024,
-    #    bidirectional=True,
-    #    attention=True,
-    #)
 
-    #model = generate_model()
-    #model = load_pretrained_model(model, 'saved_weights/resnet_50.pth')
- 
     generator = Modified_Generator(semantic_dim, noise_dim)
     discriminator = Discriminator(input_dim = 8192)
     classifier = Classifier(num_classes = num_classes)
@@ -145,7 +121,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                        map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
         print("Initializing weights from: {}...".format(
             os.path.join(save_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
-        #model.load_state_dict(checkpoint['extractor_state_dict'])
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
         generator.load_state_dict(checkpoint['generator_state_dict'])
         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
@@ -155,28 +130,19 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     else:
         print("Training {} from scratch...".format(modelName))
-        model = nn.Sequential(*list(model.children())[:-1])
-        model = model.cuda()
 
-
-    print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters()) / 1000000.0))
+    print('Total params: %.2fM' % (sum(p.numel() for p in classifier.parameters()) / 1000000.0))
 
     log_dir = os.path.join(save_dir)
     writer = SummaryWriter(log_dir=log_dir)
 
     print('Training model on {} dataset...'.format(dataset))
 
-    #train_dataset = video_dataset(train = True, classes = all_classes[:num_classes])
-    #train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    #test_dataset = video_dataset(train = False, classes = all_classes[:num_classes])
-    #test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-
-    train_dataloader, test_dataloader, len_train, len_test = create_data_loader('ucf101_i3d/i3d.mat', all_classes[:40])
+    train_dataloader, test_dataloader, len_train, len_test = create_data_loader(feat_path, all_classes)
 
     trainval_loaders = {'train': train_dataloader, 'test': test_dataloader}
 
     if cuda:
-        #model = model.to(device)
         generator = generator.to(device)
         discriminator = discriminator.to(device)
         classifier = classifier.to(device)
@@ -187,7 +153,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
     adversarial_loss = torch.nn.BCELoss().to(device)    
 
-    feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+    feats = sio.loadmat(att_path)
     att = feats['att']
     att = np.transpose(att, (1,0))
     att = torch.tensor(att).cuda()  
@@ -224,14 +190,13 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 epoch_loss = running_loss/len_train
                 epoch_acc = running_corrects.item()/len_train
 
-                writer.add_scalar('data/train_acc_epoch_benchmark {}'.format(i), epoch_acc, epoch)
+                writer.add_scalar('data/train_acc_epoch_benchmark', epoch_acc, epoch)
 
                 print("[train] Epoch: {}/{} Training Acc: {}".format(epoch+1, num_epochs, epoch_acc))
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    #model.eval()
-                    classifier.eval()
+                    #classifier.eval()
                     start_time = timeit.default_timer()
 
                     running_corrects = 0.0
@@ -251,7 +216,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                     real_epoch_acc = running_corrects.item()/len_test
 
-                    writer.add_scalar('data/test_acc_epoch_benchmark {}'.format(i), real_epoch_acc, epoch)
+                    writer.add_scalar('data/test_acc_epoch_benchmark', real_epoch_acc, epoch)
 
                     print("[test] Epoch: {}/{} Test Dataset Acc: {}".format(epoch+1, num_epochs, real_epoch_acc))
                     stop_time = timeit.default_timer()
@@ -261,7 +226,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 if (epoch % save_epoch == save_epoch - 1):
                     save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
                     torch.save({
-                        'epoch': epoch + 1,
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
                         'classifier_state_dict': classifier.state_dict(),
@@ -333,15 +297,15 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             epoch_g_loss = running_g_loss / len_train
             gen_epoch_acc = gen_running_corrects.item() / len_train
 
-            writer.add_scalar('data/gen_train_acc_epoch_benchmark {}'.format(i), gen_epoch_acc, epoch)
-            writer.add_scalar('data/d_loss_epoch_benchmark {}'.format(i), epoch_d_loss, epoch)
-            writer.add_scalar('data/g_loss_epoch_benchmark {}'.format(i), epoch_g_loss, epoch)
+            writer.add_scalar('data/gen_train_acc_epoch_benchmark', gen_epoch_acc, epoch)
+            writer.add_scalar('data/d_loss_epoch_benchmark', epoch_d_loss, epoch)
+            writer.add_scalar('data/g_loss_epoch_benchmark', epoch_g_loss, epoch)
 
             print("[train] Epoch: {}/{} Generator Loss {} Discriminator Loss {} Generator Acc: {} ".format(epoch+1, num_epochs, epoch_g_loss, epoch_d_loss, gen_epoch_acc))
 
 
             if useTest and epoch % test_interval == (test_interval - 1):
-                classifier.eval()
+                #classifier.eval()
                 generator.eval()
                 start_time = timeit.default_timer()
 
@@ -365,7 +329,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 real_epoch_acc = running_corrects.item() / len_test
 
-                writer.add_scalar('data/gen_test_acc_epoch_benchmark {}'.format(i), real_epoch_acc, epoch)
+                writer.add_scalar('data/gen_test_acc_epoch_benchmark', real_epoch_acc, epoch)
 
                 print("[test] Epoch: {}/{} Test Dataset Generator Acc: {}".format(epoch+1, num_epochs, real_epoch_acc))
                 stop_time = timeit.default_timer()
