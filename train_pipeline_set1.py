@@ -245,7 +245,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
                         running_corrects += torch.sum(predictions == labels.data)
 
-                    print(len_test)
+                    #print(len_test)
 
                     real_epoch_acc = running_corrects.item()/len_test
 
