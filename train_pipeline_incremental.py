@@ -296,7 +296,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                         with torch.no_grad():
                             feats = inputs.to(device).float()
                             labels = labels.to(device).long()                
-
+             
                             #print(labels)
                             loop_batch_size = len(feats)
                    
@@ -311,11 +311,11 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                     for (inputs, labels) in old_test_dataloader:
-                        feats = Variable(inputs.to(device), requires_grad=False).float()
-                        labels = Variable(labels.to(device), requires_grad=False).long()                
+                        feats = inputs.to(device).float()
+                        labels = labels.to(device).long()                
 
                         loop_batch_size = len(inputs)
-                   
+      
                         old_logits = classifier(feats)
      
                         _, old_predictions = torch.max(torch.softmax(old_logits, dim = 1), dim = 1, keepdim = False)         
