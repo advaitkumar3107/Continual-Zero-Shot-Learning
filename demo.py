@@ -24,12 +24,7 @@ from dataloader import create_data_loader, create_old_data_loader
 import scipy.io as sio
 
 
-atts = sio.loadmat('hmdb_i3d/i3d.mat')
-feats = atts['labels']
-print(feats.shape)
-#classes = range(101)
+feat_path = 'hmdb_i3d/i3d.mat'
+train_dataloader, test_dataloader, len_train, len_test = create_data_loader(feat_path, range(20))
 
-#train_loader, test_loader, len_train, len_test = create_old_data_loader('ucf101_i3d/i3d.mat', classes[90:])
-
-#for (inputs, labels) in test_loader:
-    #print(inputs.shape)
+print(len_train)
