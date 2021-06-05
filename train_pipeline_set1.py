@@ -43,6 +43,8 @@ parser.add_argument('--test_interval', type = int, default = 1, help = 'number o
 parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0 for testing')
 parser.add_argument('--only_gan', type = int, default = 0, help = '1 if train only GAN. 0 for GAN + feature extractor')
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
+parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
+
 args = parser.parse_args()
 
 gpu_id = str(args.gpu)
