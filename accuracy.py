@@ -25,21 +25,21 @@ import scipy.io as sio
 
 
 parser = argparse.ArgumentParser(description='Video action recogniton testing')
-parser.add_argument('--logfile_name', type=str, default="generator_w_with_sem:10",
-                    help='file name for storing the log file')
+
 parser.add_argument('--load_name', type = str, default = "temp", help = 'Name of the directory which contains the saved weights')
 parser.add_argument('--gpu', type=int, default=3,
                     help='GPU ID, start from 0')
 parser.add_argument('--start_class', type = int, default = 0, help = 'testing classes start from')
 parser.add_argument('--end_class', type = int, default = 20, help = 'testing classes end at')
+parser.add_argument('--num_class', type = int, default = 20, help = 'Number of classes in classifier')
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
 parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
+parser.add_argument('--increment', type = int, default = None, help = 'Number of increments the model was trained for')
 
 args = parser.parse_args()
 
 gpu_id = str(args.gpu)
-log_name = args.logfile_name
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -50,16 +50,18 @@ batch_size = 100
 semantic_dim = 300
 input_dim = 8192
 noise_dim = 1024
+resume_epoch = args.resume_epoch
+increment = args.increment
 
 dataset = 'ucf101' # Options: hmdb51 or ucf101
 
-num_classes = args.end_class
-all_classes = range(num_classes)
+num_class = args.num_class
+end_class = args.end_class
+all_classes = range(end_class)
 test_classes = all_classes[args.start_class:]
 
 current_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 save_dir_root = current_dir
-save_dir = os.path.join(save_dir_root, 'run', log_name)
 load_dir = os.path.join(save_dir_root, 'run', args.load_name)
 modelName = 'Bi-LSTM' # Options: C3D or R2Plus1D or R3D
 saveName = modelName + '-' + dataset
@@ -70,25 +72,30 @@ LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
 att_path = args.att_path
 feat_path = args.feat_path
 
-def test_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir):
-
+def test_model(dataset=dataset, load_dir = load_dir):
     generator = Modified_Generator(semantic_dim, noise_dim)
     discriminator = Discriminator(input_dim = input_dim)
-    classifier = Classifier(num_classes = num_classes)
-
-    checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment' '_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+    
+    if (increment is None):
+        checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment' +  '_epoch-' + str(resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
-    print("Initializing weights from: {}...".format(
-            os.path.join(save_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+        print("Initializing weights from: {}...".format(
+            os.path.join(load_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+        classifier = Classifier(num_classes = num_class, bias = True)
+
+    else:
+        checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment_' + str(increment) + '_epoch-' + str(resume_epoch - 1) + '.pth.tar'),
+                       map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
+        print("Initializing weights from: {}...".format(
+            os.path.join(load_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+        classifier = Classifier(num_classes = num_class, bias = False)
+
     classifier.load_state_dict(checkpoint['classifier_state_dict'])
     generator.load_state_dict(checkpoint['generator_state_dict'])
     discriminator.load_state_dict(checkpoint['discriminator_state_dict'])    
     print("Training {} saved model...".format(modelName))
 
     print('Total params: %.2fM' % (sum(p.numel() for p in classifier.parameters()) / 1000000.0))
-
-    log_dir = os.path.join(save_dir)
-    writer = SummaryWriter(log_dir=log_dir)
 
     print('Training model on {} dataset...'.format(dataset))
 
@@ -116,36 +123,36 @@ def test_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir):
         _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
 
         running_corrects += torch.sum(predictions == labels.data)
-        epoch_acc = running_corrects.item()/len_test
-        print("[test] Classifier Testing Acc: {}".format(epoch_acc))
+
+    epoch_acc = running_corrects.item()/len_test
+    print("[test] Classifier Testing Acc: {}".format(epoch_acc))
 
 
 
-        start_time = timeit.default_timer()
+    start_time = timeit.default_timer()
+    running_corrects = 0.0
 
-        running_corrects = 0.0
+    for (inputs, labels) in test_dataloader:
+        feats = Variable(inputs, requires_grad = True).float().cuda()
+        labels = Variable(labels, requires_grad = False).long().cuda()
 
-        for (inputs, labels) in test_dataloader:
-            feats = Variable(inputs, requires_grad = True).float().cuda()
-            labels = Variable(labels, requires_grad = False).long().cuda()
+        loop_batch_size = len(feats)
+        
+        noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
+        semantic_true = att[labels]
 
-            loop_batch_size = len(feats)
-            
-            noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
-            semantic_true = att[labels]
+        with torch.no_grad():
+            features_2048 = generator(semantic_true.float(), noise)
+            probs = classifier(features_2048)
 
-            with torch.no_grad():
-                features_2048 = generator(semantic_true.float(), noise)
-                probs = classifier(features_2048)
+        _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+        running_corrects += torch.sum(predictions == labels.data)
 
-            _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
-            running_corrects += torch.sum(predictions == labels.data)
+    real_epoch_acc = running_corrects.item() / len_test
 
-        real_epoch_acc = running_corrects.item() / len_test
-
-        print("[test] Epoch: Test Dataset Generator Acc: {}".format(real_epoch_acc))
-        stop_time = timeit.default_timer()
-        print("Execution time: " + str(stop_time - start_time) + "\n")
+    print("[test] Epoch: Test Dataset Generator Acc: {}".format(real_epoch_acc))
+    stop_time = timeit.default_timer()
+    print("Execution time: " + str(stop_time - start_time) + "\n")
 
 
 
