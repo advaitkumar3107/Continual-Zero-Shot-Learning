@@ -33,6 +33,12 @@ parser.add_argument('--save_name', type = str, default = "episode_0", help = 'Na
 
 args = parser.parse_args()
 
+gpu_id = str(args.gpu)
+os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("Device being used:", device, "| gpu_id: ", gpu_id)
+
 total_classes = args.num_class
 all_classes = range(total_classes)
 increments = total_classes // args.increment_class
