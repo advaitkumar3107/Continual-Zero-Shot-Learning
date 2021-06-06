@@ -92,99 +92,62 @@ def test_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir):
 
     print('Training model on {} dataset...'.format(dataset))
 
-    train_dataloader, test_dataloader, len_train, len_test = create_data_loader(feat_path, all_classes)
-
-    trainval_loaders = {'train': train_dataloader, 'test': test_dataloader}
+    _, test_dataloader, _, len_test = create_data_loader(feat_path, all_classes)
 
     if cuda:
         generator = generator.to(device)
         discriminator = discriminator.to(device)
         classifier = classifier.to(device)
 
-    optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2))
-    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
-    optimizer = torch.optim.Adam(list(classifier.parameters()), lr=lr)
-
-    adversarial_loss = torch.nn.BCELoss().to(device)    
-
     feats = sio.loadmat(att_path)
     att = feats['att']
     att = np.transpose(att, (1,0))
     att = torch.tensor(att).cuda()  
-
       
-    if args.train == 1:
-        if args.only_gan == 0:    
-            for epoch in range(num_epochs):
-                start_time = timeit.default_timer()
+    start_time = timeit.default_timer()
 
-                running_loss = 0.0
-                running_corrects = 0.0
+    running_corrects = 0.0
 
-                classifier.train()
+    for (inputs, labels) in test_dataloader:
+        feats = Variable(inputs, requires_grad = False).float().cuda()
+        labels = Variable(labels, requires_grad = False).long().cuda()
+        loop_batch_size = len(feats)
+        probs = classifier(feats)                
+        _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
 
-                for (inputs, labels) in (trainval_loaders["train"]):
-                    feats = Variable(inputs, requires_grad = True).float().cuda()
-                    labels = Variable(labels, requires_grad = False).long().cuda()
-
-                    optimizer.zero_grad()
-
-                    #model.lstm.reset_hidden_state()
-                    loop_batch_size = len(feats)
-
-                    probs = classifier(feats)
-                    loss = nn.CrossEntropyLoss()(probs, labels)
-                    loss.backward()
-                    optimizer.step()
-                
-                    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
-                    running_loss += loss.item() * feats.size(0)
-                    running_corrects += torch.sum(predictions == labels.data)
-
-                epoch_loss = running_loss/len_train
-                epoch_acc = running_corrects.item()/len_train
-
-                writer.add_scalar('data/train_acc_epoch_benchmark', epoch_acc, epoch)
-
-                print("[train] Epoch: {}/{} Training Acc: {}".format(epoch+1, num_epochs, epoch_acc))
+        running_corrects += torch.sum(predictions == labels.data)
+        epoch_acc = running_corrects.item()/len_test
+        print("[test] Classifier Testing Acc: {}".format(epoch_acc))
 
 
-                if useTest and epoch % test_interval == (test_interval - 1):
-                    #classifier.eval()
-                    start_time = timeit.default_timer()
 
-                    running_corrects = 0.0
+        start_time = timeit.default_timer()
 
-                    for (inputs, labels) in (trainval_loaders["test"]):
-                        feats = Variable(inputs, requires_grad = True).float().cuda()
-                        labels = Variable(labels, requires_grad = False).long().cuda()
-                        loop_batch_size = len(feats)
+        running_corrects = 0.0
 
-                        with torch.no_grad():
-                            probs = classifier(feats)
+        for (inputs, labels) in test_dataloader:
+            feats = Variable(inputs, requires_grad = True).float().cuda()
+            labels = Variable(labels, requires_grad = False).long().cuda()
 
-                        _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
-                        running_corrects += torch.sum(predictions == labels.data)
+            loop_batch_size = len(feats)
+            
+            noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
+            semantic_true = att[labels]
 
-                    #print(len_test)
+            with torch.no_grad():
+                features_2048 = generator(semantic_true.float(), noise)
+                probs = classifier(features_2048)
 
-                    real_epoch_acc = running_corrects.item()/len_test
+            _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+            running_corrects += torch.sum(predictions == labels.data)
 
-                    writer.add_scalar('data/test_acc_epoch_benchmark', real_epoch_acc, epoch)
+        real_epoch_acc = running_corrects.item() / len_test
 
-                    print("[test] Epoch: {}/{} Test Dataset Acc: {}".format(epoch+1, num_epochs, real_epoch_acc))
-                    stop_time = timeit.default_timer()
-                    print("Execution time: " + str(stop_time - start_time) + "\n")
+        print("[test] Epoch: Test Dataset Generator Acc: {}".format(real_epoch_acc))
+        stop_time = timeit.default_timer()
+        print("Execution time: " + str(stop_time - start_time) + "\n")
 
 
-                if (epoch % save_epoch == save_epoch - 1):
-                    save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
-                    torch.save({
-                        'generator_state_dict': generator.state_dict(),
-                        'discriminator_state_dict': discriminator.state_dict(),
-                        'classifier_state_dict': classifier.state_dict(),
-                        }, save_path)
-                    print("Save model at {}\n".format(save_path))
 
 if __name__ == "__main__":
     test_model()
