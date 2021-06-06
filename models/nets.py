@@ -260,13 +260,13 @@ class IWT(nn.Module):
 #  Final classifier
 ##############################
 class Classifier(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, bias = True):
         super(Classifier, self).__init__()
         self.extractor = nn.Sequential(nn.Linear(8192, 1024), 
             nn.BatchNorm1d(1024, momentum=0.01),
             nn.ReLU(), nn.Linear(1024, 512), nn.BatchNorm1d(512, momentum = 0.01), nn.ReLU())
      
-        self.classifier_out = nn.Linear(512, num_classes) 
+        self.classifier_out = nn.Linear(512, num_classes, bias = bias) 
 
     def forward(self, x):
         x = x.view(x.size(0), -1)
