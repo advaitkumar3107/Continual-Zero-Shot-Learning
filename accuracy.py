@@ -36,6 +36,7 @@ parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch 
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
 parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
 parser.add_argument('--increment', type = int, default = None, help = 'Number of increments the model was trained for')
+parser.add_argument('--dataset', type = str, default = "ucf101", help = 'Dataset to test on')
 
 args = parser.parse_args()
 
@@ -53,7 +54,7 @@ noise_dim = 1024
 resume_epoch = args.resume_epoch
 increment = args.increment
 
-dataset = 'ucf101' # Options: hmdb51 or ucf101
+dataset = args.dataset # Options: hmdb51 or ucf101
 
 num_class = args.num_class
 end_class = args.end_class
