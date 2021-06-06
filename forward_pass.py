@@ -15,6 +15,9 @@ from models.nets import *
 from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
 from dataloader import create_data_loader
+import scipy.io as sio
+
+parser = argparse.ArgumentParser(description='Saving generated features')
 
 parser.add_argument('--load_name', type = str, default = "temp", help = 'Name of the directory which contains the saved weights')
 parser.add_argument('--gpu', type=int, default=3,
@@ -37,14 +40,14 @@ increments = total_classes // args.increment_class
 att_path = args.att_path
 feat_path = args.feat_path
 
-model = Modified_Generator(300, 8192)
+model = Modified_Generator(300, 1024)
 
 if (args.increment is None):
-    checkpoint = torch.load(os.path.join('run/' + load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
 
 else:
-    checkpoint = torch.load(os.path.join('run/' + load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
@@ -58,6 +61,13 @@ att = torch.tensor(att).cuda()
 classes = 0
 
 for i in range(increments):
+
+    if (i == 0):
+        if (not os.path.exists("gen_features")):
+            os.mkdir("gen_features")
+        if (not os.path.exists(f"gen_features/{args.save_name}")):
+            os.mkdir(f"gen_features/{args.save_name}")
+
     train_dataloader, _, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
 
     for i, (inputs, labels) in enumerate(train_dataloader):
@@ -79,6 +89,6 @@ for i in range(increments):
         print(convlstm_feat_labs.shape)
         print(gen_feat_labs.shape)
 
-    np.save(f"{args.save_name}/convlstm_feat_labs_{args.increment_class}.npy", convlstm_feat_labs.cpu().detach().numpy())
-    np.save(f"{args.save_name}/gen_feat_labs_{args.increment_class}.npy", gen_feat_labs.cpu().detach().numpy())
+    np.save(f"gen_features/{args.save_name}/convlstm_feat_labs_{args.increment_class}_{classes}.npy", convlstm_feat_labs.cpu().detach().numpy())
+    np.save(f"gen_features/{args.save_name}/gen_feat_labs_{args.increment_class}_{classes}.npy", gen_feat_labs.cpu().detach().numpy())
     classes += args.increment_class
