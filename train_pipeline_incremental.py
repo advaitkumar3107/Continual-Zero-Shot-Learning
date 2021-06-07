@@ -237,15 +237,6 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     new_logits = classifier(new_features)
                     old_logits = classifier(old_features)
 
-                    #expected_logits = classifier1(new_features)
-                    #expected_old_logits = classifier1(old_features)
-
-                    #(dataset_inputs, dataset_labels) = next(iter(old_train_dataloader))
-                    #feats = Variable(dataset_inputs.to(device), requires_grad = True).float()
-                    #dataset_labels = Variable(dataset_labels.to(device), requires_grad=False).long()
-                    #dataset_logits = classifier(feats)
-
-                    #dataset_cls_loss = nn.CrossEntropyLoss()(dataset_logits, dataset_labels)
                     new_cls_loss = nn.CrossEntropyLoss()(new_logits, labels)
                     old_cls_loss = nn.CrossEntropyLoss()(old_logits, old_labels)
 
