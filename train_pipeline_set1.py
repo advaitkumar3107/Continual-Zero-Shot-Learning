@@ -45,6 +45,7 @@ parser.add_argument('--only_gan', type = int, default = 0, help = '1 if train on
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
 parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
+parser.add_argument('--dataset', type = str, default = "ucf101", help = 'Name of training dataset')
 
 args = parser.parse_args()
 
@@ -69,7 +70,7 @@ nTestInterval = args.test_interval # Run on test set every nTestInterval epochs
 snapshot = args.snapshot # Store a model every snapshot epochs
 lr = 5e-4 # Learning rate
 
-dataset = 'hmdb51' # Options: hmdb51 or ucf101
+dataset = args.dataset # Options: hmdb51 or ucf101
 
 total_classes = args.total_classes
 
@@ -196,7 +197,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    #classifier.eval()
+                    classifier.train()
                     start_time = timeit.default_timer()
 
                     running_corrects = 0.0
@@ -305,8 +306,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
             if useTest and epoch % test_interval == (test_interval - 1):
-                #classifier.eval()
-                generator.eval()
+                classifier.train()
+                generator.train()
                 start_time = timeit.default_timer()
 
                 running_corrects = 0.0
