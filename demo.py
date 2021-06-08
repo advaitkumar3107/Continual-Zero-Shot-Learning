@@ -20,13 +20,13 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
 from video_data_loader import video_dataset
-from dataloader import create_data_loader, create_old_data_loader
+from dataloader import create_data_loader, create_old_data_loader, create_data_loader_zsl
 import scipy.io as sio
 from models.nets import *
 
-checkpoint = torch.load('run/pipeline_incremental/Bi-LSTM-ucf101_increment_1_epoch-499.pth.tar',map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
+train_loader, test_loader, len_train, len_test = create_data_loader_zsl("gen_features/gzsl_features/gen_feat_labs_101_0.npy")
 
-state_dict = checkpoint['classifier_state_dict']
+leng = 0
 
-classifier = Classifier(num_classes = 50)
-print(state_dict)
+for (inputs, labels) in train_loader:
+    print(labels)
