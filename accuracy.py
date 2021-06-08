@@ -111,6 +111,10 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
             discriminator = discriminator.to(device)
             classifier = classifier.to(device)
 
+        classifier.train()
+        generator.train()
+        discriminator.train()
+
         feats = sio.loadmat(att_path)
         att = feats['att']
         att = np.transpose(att, (1,0))
@@ -186,6 +190,8 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
         if cuda:
             classifier = classifier.to(device)
 
+        classifier.train()
+        
         feats = sio.loadmat(att_path)
         att = feats['att']
         att = np.transpose(att, (1,0))
