@@ -58,7 +58,7 @@ std_start_time = time.time()
 b1=0.5
 b2=0.999
 batch_size = 100
-input_dim = 2048
+input_dim = 8192
 semantic_dim = 300
 noise_dim = 1024
 nEpochs = args.epochs  # Number of epochs for training
@@ -94,7 +94,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
             num_classes (int): Number of classes in the data
             num_epochs (int, optional): Number of epochs to train for.
     """
-    classifier = Classifier(num_classes = num_classes)
+    classifier = Classifier(num_classes = num_classes, bias = False)
 
     if args.resume_epoch is not None:
         checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment' '_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
@@ -150,47 +150,46 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_loss += loss.item() * feats.size(0)
                 running_corrects += torch.sum(predictions == labels.data)
 
-                epoch_loss = running_loss/len_train
-                epoch_acc = running_corrects.item()/len_train
+            epoch_loss = running_loss/len_train
+            epoch_acc = running_corrects.item()/len_train
 
-                writer.add_scalar('data/train_acc_epoch_benchmark', epoch_acc, epoch)
+            writer.add_scalar('data/train_acc_epoch_benchmark', epoch_acc, epoch)
+            print("[train] Epoch: {}/{} Training Acc: {}".format(epoch+1, num_epochs, epoch_acc))
 
-                print("[train] Epoch: {}/{} Training Acc: {}".format(epoch+1, num_epochs, epoch_acc))
 
+            if useTest and epoch % test_interval == (test_interval - 1):
+                start_time = timeit.default_timer()
 
-                if useTest and epoch % test_interval == (test_interval - 1):
-                    start_time = timeit.default_timer()
+                running_corrects = 0.0
 
-                    running_corrects = 0.0
+                for (inputs, labels) in (trainval_loaders["test"]):
+                    feats = Variable(inputs, requires_grad = True).float().cuda()
+                    labels = Variable(labels, requires_grad = False).long().cuda()
+                    loop_batch_size = len(feats)
 
-                    for (inputs, labels) in (trainval_loaders["test"]):
-                        feats = Variable(inputs, requires_grad = True).float().cuda()
-                        labels = Variable(labels, requires_grad = False).long().cuda()
-                        loop_batch_size = len(feats)
+                    with torch.no_grad():
+                        probs = classifier(feats)
 
-                        with torch.no_grad():
-                            probs = classifier(feats)
-
-                        _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
-                        running_corrects += torch.sum(predictions == labels.data)
+                    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+                    running_corrects += torch.sum(predictions == labels.data)
 
                     #print(len_test)
 
-                    real_epoch_acc = running_corrects.item()/len_test
+                real_epoch_acc = running_corrects.item()/len_test
 
-                    writer.add_scalar('data/test_acc_epoch_benchmark', real_epoch_acc, epoch)
+                writer.add_scalar('data/test_acc_epoch_benchmark', real_epoch_acc, epoch)
 
-                    print("[test] Epoch: {}/{} Test Dataset Acc: {}".format(epoch+1, num_epochs, real_epoch_acc))
-                    stop_time = timeit.default_timer()
-                    print("Execution time: " + str(stop_time - start_time) + "\n")
+                print("[test] Epoch: {}/{} Test Dataset Acc: {}".format(epoch+1, num_epochs, real_epoch_acc))
+                stop_time = timeit.default_timer()
+                print("Execution time: " + str(stop_time - start_time) + "\n")
 
 
-                if (epoch % save_epoch == save_epoch - 1):
-                    save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
-                    torch.save({
-                        'classifier_state_dict': classifier.state_dict(),
-                        }, save_path)
-                    print("Save model at {}\n".format(save_path))
+            if (epoch % save_epoch == save_epoch - 1):
+                save_path = os.path.join(save_dir, saveName + '_increment' '_epoch-' + str(epoch) + '.pth.tar')
+                torch.save({
+                    'classifier_state_dict': classifier.state_dict(),
+                    }, save_path)
+                print("Save model at {}\n".format(save_path))
     
     else:
         start_time = timeit.default_timer()
