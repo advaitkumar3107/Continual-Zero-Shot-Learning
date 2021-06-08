@@ -122,9 +122,9 @@ class Generator(nn.Module):
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
             if normalize:
                 layers.append(nn.BatchNorm1d(out_feat, 0.8))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
 
         self.model = nn.Sequential(
@@ -148,9 +148,9 @@ class Modified_Generator(nn.Module):
 
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
             if normalize:
                 layers.append(nn.BatchNorm1d(out_feat, 0.8))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
             return layers
 
         self.model = nn.Sequential(
@@ -199,72 +199,15 @@ class Discriminator(nn.Module):
         validity = self.model(d_in)
         return validity
 
-
-
-##############################
-#  Wavelet Transform
-##############################
-def dwt_init(x):
-
-    x01 = x[:, :, 0::2, :] / 2
-    x02 = x[:, :, 1::2, :] / 2
-    x1 = x01[:, :, :, 0::2]
-    x2 = x02[:, :, :, 0::2]
-    x3 = x01[:, :, :, 1::2]
-    x4 = x02[:, :, :, 1::2]
-    x_LL = x1 + x2 + x3 + x4
-    x_HL = -x1 - x2 + x3 + x4
-    x_LH = -x1 + x2 - x3 + x4
-    x_HH = x1 - x2 - x3 + x4
-
-    return torch.cat((x_LL, x_HL, x_LH, x_HH), 1)
-
-def iwt_init(x):
-    r = 2
-    in_batch, in_channel, in_height, in_width = x.size()
-    #print([in_batch, in_channel, in_height, in_width])
-    out_batch, out_channel, out_height, out_width = in_batch, int(
-        in_channel / (r ** 2)), r * in_height, r * in_width
-    x1 = x[:, 0:out_channel, :, :] / 2
-    x2 = x[:, out_channel:out_channel * 2, :, :] / 2
-    x3 = x[:, out_channel * 2:out_channel * 3, :, :] / 2
-    x4 = x[:, out_channel * 3:out_channel * 4, :, :] / 2
-    
-
-    h = torch.zeros([out_batch, out_channel, out_height, out_width]).float().cuda()
-
-    h[:, :, 0::2, 0::2] = x1 - x2 - x3 + x4
-    h[:, :, 1::2, 0::2] = x1 - x2 + x3 - x4
-    h[:, :, 0::2, 1::2] = x1 + x2 - x3 - x4
-    h[:, :, 1::2, 1::2] = x1 + x2 + x3 + x4
-
-    return h
-
-class DWT(nn.Module):
-    def __init__(self):
-        super(DWT, self).__init__()
-        self.requires_grad = False
-
-    def forward(self, x):
-        return dwt_init(x)
-
-class IWT(nn.Module):
-    def __init__(self):
-        super(IWT, self).__init__()
-        self.requires_grad = False
-
-    def forward(self, x):
-        return iwt_init(x)
-
 ##############################
 #  Final classifier
 ##############################
 class Classifier(nn.Module):
     def __init__(self, num_classes, bias = True):
         super(Classifier, self).__init__()
-        self.extractor = nn.Sequential(nn.Linear(8192, 1024), 
-            nn.BatchNorm1d(1024, momentum=0.01),
-            nn.ReLU(), nn.Linear(1024, 512), nn.BatchNorm1d(512, momentum = 0.01), nn.ReLU())
+        self.extractor = nn.Sequential(nn.Linear(8192, 1024),
+            nn.ReLU(), 
+            nn.BatchNorm1d(1024, momentum=0.01), nn.Linear(1024, 512), nn.ReLU(), nn.BatchNorm1d(512, momentum = 0.01))
      
         self.classifier_out = nn.Linear(512, num_classes, bias = bias) 
 
@@ -282,12 +225,11 @@ class Modified_Classifier(nn.Module):
         self.idwt = IWT()
         self.linear1 = nn.Linear(8192, 1600)
         
-        self.extractor = nn.Sequential(nn.Linear(1600, 1024), 
-            nn.BatchNorm1d(1024, momentum=0.01),
-            nn.ReLU(), nn.Linear(1024, 512), 
-            nn.BatchNorm1d(512, momentum=0.01),
-            nn.ReLU(), nn.Linear(512, 256), 
-            nn.BatchNorm1d(256, momentum=0.01),
+        self.extractor = nn.Sequential(nn.Linear(1600, 1024),
+            nn.ReLU(), 
+            nn.BatchNorm1d(1024, momentum=0.01, track_running_stats = False), nn.Linear(1024, 512),
+            nn.ReLU(), 
+            nn.BatchNorm1d(512, momentum=0.01, track_running_stats = False), nn.Linear(512, 256), 
             nn.ReLU())
      
         self.classifier_out = nn.Linear(256, num_classes) 
