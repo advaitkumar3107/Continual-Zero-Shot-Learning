@@ -254,7 +254,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     running_old_corrects += torch.sum(old_predictions == old_labels.data) 
                     running_new_corrects += torch.sum(new_predictions == labels.data)
 
-                old_epoch_acc = running_old_corrects.item() / len_train
+                old_epoch_acc = running_old_corrects.item() / old_len_train
                 new_epoch_acc = running_new_corrects.item() / len_train
 
                 words = 'data/old_train_acc_epoch' + str(i)
