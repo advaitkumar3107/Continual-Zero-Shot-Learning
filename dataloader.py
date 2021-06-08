@@ -73,12 +73,10 @@ def create_old_data_loader(feat_path, classes, batch_size = 100, num_samples = 1
     return train_loader, test_loader, len_train, len_test
     
 
-def create_data_loader_zsl(feat_path, batch_size = 100):
-    feats = sio.loadmat(feat_path)
-    labels = feats['labels'] - 1
-    feats = feats['features']
-    feats = np.transpose(feats,(1,0))
-    labels = np.squeeze(labels, axis = 1)
+def create_data_loader_zsl(feat_path, classes = range(101), batch_size = 100):
+    feats = np.load(feat_path)
+    labels = feats[:,-1]
+    feats = feats[:,:8192]
 
     train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = 0.25, random_state = 42)
 
@@ -90,14 +88,11 @@ def create_data_loader_zsl(feat_path, batch_size = 100):
     len_test = 0
 
     num_classes = classes[-1]
-    samples = torch.ones((num_classes+1))*num_samples
     
     for i in range(len(train_label)):
         if (train_label[i].item() in classes):
-            if (samples[train_label[i].item()] > 0):
-                data.append([train_data[i,:], train_label[i]])
-                samples[train_label[i].item()] -= 1
-                len_train += 1
+            data.append([train_data[i,:], train_label[i]])
+            len_train += 1
 
     data_test = []
     for i in range(len(test_label)):
