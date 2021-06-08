@@ -217,36 +217,6 @@ class Classifier(nn.Module):
         x = self.classifier_out(x)
         return (x)
 
-
-class Modified_Classifier(nn.Module):
-    def __init__(self, num_classes):
-        super(Modified_Classifier, self).__init__()
-        self.dwt = DWT()
-        self.idwt = IWT()
-        self.linear1 = nn.Linear(8192, 1600)
-        
-        self.extractor = nn.Sequential(nn.Linear(1600, 1024),
-            nn.ReLU(), 
-            nn.BatchNorm1d(1024, momentum=0.01, track_running_stats = False), nn.Linear(1024, 512),
-            nn.ReLU(), 
-            nn.BatchNorm1d(512, momentum=0.01, track_running_stats = False), nn.Linear(512, 256), 
-            nn.ReLU())
-     
-        self.classifier_out = nn.Linear(256, num_classes) 
-
-    def forward(self, x):
-        x = x.view(x.size(0), -1)        
-        x = self.linear1(x)
-        x = x.view(x.size(0), 1, 40, 40)
-        x = self.dwt(x)
-        x = x.view(x.size(0), -1)        
-        x = self.extractor(x)
-        x = x.view(x.size(0), 4, 8, 8)
-        x = self.idwt(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier_out(x)
-        return (x)
-
 ################################################################
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = "3"
