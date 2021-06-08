@@ -60,7 +60,7 @@ std_start_time = time.time()
 b1=0.5
 b2=0.999
 batch_size = 100
-input_dim = 2048
+input_dim = 8192
 semantic_dim = 300
 noise_dim = 1024
 nEpochs = args.epochs  # Number of epochs for training
@@ -114,7 +114,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
     """
 
     generator = Modified_Generator(semantic_dim, noise_dim)
-    discriminator = Discriminator(input_dim = 8192)
+    discriminator = Discriminator(input_dim = input_dim)
     classifier = Classifier(num_classes = num_classes)
 
     if args.resume_epoch is not None:

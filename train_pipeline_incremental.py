@@ -183,7 +183,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
         print('Classes used in the new dataset: %d to %d' % (num_classes, num_classes+increment_classes))
         
-        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_old_data_loader(feat_path, all_classes[:num_classes])
+        old_train_dataloader, old_test_dataloader, old_len_train, old_len_test = create_data_loader(feat_path, all_classes[:num_classes])
 
         optimizer = torch.optim.Adam(classifier.parameters(), lr=lr[0], betas=(b1,b2))
         optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr[0], betas=(b1, b2))
