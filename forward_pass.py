@@ -59,6 +59,8 @@ else:
 model.load_state_dict(checkpoint['generator_state_dict'])
 model = model.cuda()
 
+model.train()
+
 feats = sio.loadmat(att_path)
 att = feats['att']
 att = np.transpose(att, (1,0))
