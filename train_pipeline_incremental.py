@@ -46,6 +46,7 @@ parser.add_argument('--test_interval', type = int, default = 1, help = 'number o
 parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0 for testing')
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
 parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
+parser.add_argument('--dataset', type = str, default = "ucf101", help = 'Training dataset')
 
 args = parser.parse_args()
 
@@ -71,7 +72,7 @@ nTestInterval = args.test_interval # Run on test set every nTestInterval epochs
 snapshot = args.snapshot # Store a model every snapshot epochs
 lr = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5] # Learning rate
 
-dataset = 'hmdb51' # Options: hmdb51 or ucf101
+dataset = args.dataset # Options: hmdb51 or ucf101
 
 num_classes = args.num_classes
 total_classes = args.total_classes
@@ -242,8 +243,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                     #loss = 10*nn.CrossEntropyLoss()(new_logits, labels) + nn.CrossEntropyLoss()(old_logits, old_labels) + nn.CrossEntropyLoss()(dataset_logits, dataset_labels)  + 0.25*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
                     #loss = dataset_cls_loss + 100*new_cls_loss + 7.5*CustomKLDiv(new_logits[:,:num_classes], expected_logits, 0.5)
-                    #loss = 100*new_cls_loss + 10*old_cls_loss        Used for UCF101
-                    loss = 100*(new_cls_loss + old_cls_loss)
+                    loss = 100*new_cls_loss + 10*old_cls_loss        #Used for UCF101
+                    #loss = 100*(new_cls_loss + old_cls_loss)
 
                     loss.backward()
                     optimizer.step()                    
@@ -315,9 +316,9 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 running_new_corrects = 0.0
 
                 classifier.train()
-                generator1.eval()
+                generator1.train()
                 generator.train()
-                discriminator1.eval()
+                discriminator1.train()
                 discriminator.train()
 
                 for (inputs, labels) in train_dataloader:
@@ -408,8 +409,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    #classifier.eval()
-                    generator.eval()
+                    classifier.train()
+                    generator.train()
                     
                     running_old_corrects = 0.0
                     running_new_corrects = 0.0
