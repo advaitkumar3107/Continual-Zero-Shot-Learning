@@ -23,7 +23,7 @@ parser.add_argument('--load_name', type = str, default = "temp", help = 'Name of
 parser.add_argument('--gpu', type=int, default=3,
                     help='GPU ID, start from 0')
 parser.add_argument('--increment_class', type = int, default = 10, help = 'Number of classes to increment by')
-parser.add_argument('--num_class', type = int, default = 20, help = 'Number of classes in classifier')
+parser.add_argument('--num_class', type = int, default = 70, help = 'Number of classes in classifier')
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
 parser.add_argument('--feat_path', type = str, default = "ucf101_i3d/i3d.mat", help = 'Path which contains the pretrained feats')
 parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_splits.mat", help = 'Path which contains the pretrained attributes')
