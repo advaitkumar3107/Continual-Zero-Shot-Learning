@@ -41,7 +41,7 @@ for i in range(all_features.shape[0]):
 
 start_time = time.time()
 
-tsne = TSNE(n_jobs=16)
+tsne = TSNE(n_jobs=16, n_iter = 5000)
 
 embeddings = tsne.fit_transform(all_features)
 vis_x = embeddings[:, 0]
