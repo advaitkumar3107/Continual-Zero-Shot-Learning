@@ -16,10 +16,10 @@ from video_data_loader import video_dataset, old_video_dataset
 
 num_classes = 10
 
-feat_path = "convlstm_feat_labs_" + str(num_classes) + "_test.npy"
+feat_path = "gen_features/episode 0/convlstm_feat_labs_" + str(num_classes) + "_0.npy"
 convlstm_feat = np.load(feat_path)
 
-gen_feat_path = "gen_feat_labs_" + str(num_classes) + "_test.npy"
+gen_feat_path = "gen_features/episode 0/gen_feat_labs_" + str(num_classes) + "_0.npy"
 gen_feat = np.load(gen_feat_path)
 
 #convlstm_feat = convlstm_feat.squeeze_(0)
