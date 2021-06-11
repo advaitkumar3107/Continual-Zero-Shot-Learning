@@ -197,7 +197,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
-                    classifier.train()
+                    classifier.eval()
                     start_time = timeit.default_timer()
 
                     running_corrects = 0.0
@@ -243,7 +243,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
             generator.train()
             discriminator.train()
-            classifier.train()
+            classifier.eval()
 
             for (inputs, labels) in (trainval_loaders["train"]):
                 feats = Variable(inputs, requires_grad = True).float().cuda()
@@ -306,8 +306,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
             if useTest and epoch % test_interval == (test_interval - 1):
-                classifier.train()
-                generator.train()
+                classifier.eval()
+                generator.eval()
                 start_time = timeit.default_timer()
 
                 running_corrects = 0.0
