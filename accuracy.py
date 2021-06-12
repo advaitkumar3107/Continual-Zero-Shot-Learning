@@ -79,7 +79,6 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
 
     if (only_classifier == 0):
         generator = Modified_Generator(semantic_dim, noise_dim)
-        discriminator = Discriminator(input_dim = input_dim)
     
         if (increment is None):
             checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment' +  '_epoch-' + str(resume_epoch - 1) + '.pth.tar'),
@@ -96,8 +95,7 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
             classifier = Classifier(num_classes = num_class, bias = False)
 
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
-        generator.load_state_dict(checkpoint['generator_state_dict'])
-        discriminator.load_state_dict(checkpoint['discriminator_state_dict'])    
+        generator.load_state_dict(checkpoint['generator_state_dict'])    
         print("Training {} saved model...".format(modelName))
 
         print('Total params: %.2fM' % (sum(p.numel() for p in classifier.parameters()) / 1000000.0))
@@ -108,12 +106,10 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
  
         if cuda:
             generator = generator.to(device)
-            discriminator = discriminator.to(device)
             classifier = classifier.to(device)
 
-        classifier.train()
-        generator.train()
-        discriminator.train()
+        classifier.eval()
+        generator.eval()
 
         feats = sio.loadmat(att_path)
         att = feats['att']
@@ -190,7 +186,7 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
         if cuda:
             classifier = classifier.to(device)
 
-        classifier.train()
+        classifier.eval()
         
         feats = sio.loadmat(att_path)
         att = feats['att']
