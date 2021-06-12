@@ -1,11 +1,12 @@
 import os
-
 import torch
 import pdb
 import numpy as np
 from scipy import io
 # !pip install MulticoreTSNE
 from MulticoreTSNE import MulticoreTSNE as TSNE
+from sklearn.decomposition import PCA
+import pandas as pd
 from matplotlib import pyplot as plt
 import matplotlib
 import seaborn as sns
@@ -22,34 +23,23 @@ convlstm_feat = np.load(feat_path)
 gen_feat_path = "gen_features/episode_0/gen_feat_labs_" + str(num_classes) + "_0.npy"
 gen_feat = np.load(gen_feat_path)
 
-#convlstm_feat = convlstm_feat.squeeze_(0)
-
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
 print("Generator feature shape {}".format(gen_feat.shape))
 
-all_features = np.concatenate((convlstm_feat, gen_feat), 0)
-dataset_label = np.zeros((all_features.shape[0],1))
-#dataset_style = np.zeros((all_features.shape[0],1))
+x = np.concatenate((convlstm_feat, gen_feat), 0)
+y = x[:,-1]
+x = x[:,:-1]
 
-#dataset_style[convlstm_feat.shape[0]:,:] = 1
+#pca = PCA(n_components = 100)
+#X_pca = pca.fit_transform(x)
 
-for i in range(all_features.shape[0]):
-    dataset_label[i,:] = all_features[i, -1]
-    print(all_features[i,-1])
+tsne = TSNE(n_jobs=16, n_iter = 1000)    
+embeddings = tsne.fit_transform(x)
 
-#dataset_label[convlstm_feat.shape[0]:,:] = 1
-
-start_time = time.time()
-
-tsne = TSNE(n_jobs=16, n_iter = 1000)
-
-embeddings = tsne.fit_transform(all_features)
-vis_x = embeddings[:, 0]
-vis_y = embeddings[:, 1]
-sns.set(rc={'figure.figsize':(11.7,8.27)})
+vis_x = embeddings[:,0]
+vis_y = embeddings[:,1]
 palette = sns.color_palette("bright", num_classes)
 
-#plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], style = dataset_style[:,0], legend='full', palette=palette)
-plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], legend='full', palette=palette)
+plot = sns.scatterplot(vis_x, vis_y, hue = y, legend = 'full', palette = palette)
+
 plt.savefig("dataset_tsne.png")
-print("--- {} mins {} secs---".format((time.time() - start_time)//60,(time.time() - start_time)%60))
