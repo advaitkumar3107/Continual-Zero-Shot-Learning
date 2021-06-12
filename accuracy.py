@@ -140,7 +140,6 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
         for (inputs, labels) in test_dataloader:
             feats = Variable(inputs, requires_grad = True).float().cuda()
             labels = Variable(labels, requires_grad = False).long().cuda()
-
             loop_batch_size = len(feats)
         
             noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
