@@ -24,9 +24,13 @@ from dataloader import create_data_loader, create_old_data_loader, create_data_l
 import scipy.io as sio
 from models.nets import *
 
-train_loader, test_loader, len_train, len_test = create_data_loader_zsl("gen_features/gzsl_features/gen_feat_labs_101_0.npy")
+train_loader, test_loader, len_train, len_test = create_data_loader("ucf101_i3d/i3d.mat", range(40)[10:20])
 
 leng = 0
 
 for (inputs, labels) in train_loader:
-    print(labels)
+    for j in labels:
+        if (j == 17):
+            leng += 1
+
+print(leng)
