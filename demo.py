@@ -24,13 +24,5 @@ from dataloader import create_data_loader, create_old_data_loader, create_data_l
 import scipy.io as sio
 from models.nets import *
 
-train_loader, test_loader, len_train, len_test = create_data_loader("ucf101_i3d/i3d.mat", range(40)[10:20])
-
-leng = 0
-
-for (inputs, labels) in train_loader:
-    for j in labels:
-        if (j == 17):
-            leng += 1
-
-print(leng)
+feats = sio.loadmat('ucf101_i3d/split_1/att_splits.mat')
+print(feats['att'].shape)
