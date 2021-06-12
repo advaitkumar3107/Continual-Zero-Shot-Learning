@@ -78,7 +78,7 @@ for i in range(increments):
 
     train_dataloader, _, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
 
-    for i, (inputs, labels) in enumerate(train_dataloader):
+    for j, (inputs, labels) in enumerate(train_dataloader):
         batch_size = inputs.size(0)
         labels = Variable(labels, requires_grad = False).long().cuda()
         noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
@@ -87,15 +87,13 @@ for i in range(increments):
         convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
         gen_feats = model(semantic.float(), noise)
         gen_feats = gen_feats.contiguous().view(gen_feats.size(0), -1)
-        if (i == 0):		
+        if (j == 0):		
             convlstm_feat_labs = torch.cat((convlstm_feats.float(), labels.float().unsqueeze(1)), dim = 1)
             gen_feat_labs = torch.cat((gen_feats, labels.type(torch.cuda.FloatTensor).unsqueeze(1)), dim =1)
         else:
             convlstm_feat_labs = torch.cat((convlstm_feat_labs.float(), torch.cat((convlstm_feats.float(),labels.float().unsqueeze(1)), dim=1)), 0)
             gen_feat_labs = torch.cat((gen_feat_labs, torch.cat((gen_feats,labels.float().unsqueeze(1)), dim =1)), 0)
     	# pdb.set_trace()	
-        print(convlstm_feat_labs.shape)
-        print(gen_feat_labs.shape)
 
     np.save(f"gen_features/{args.save_name}/convlstm_feat_labs_{args.increment_class}_{classes}.npy", convlstm_feat_labs.cpu().detach().numpy())
     np.save(f"gen_features/{args.save_name}/gen_feat_labs_{args.increment_class}_{classes}.npy", gen_feat_labs.cpu().detach().numpy())
