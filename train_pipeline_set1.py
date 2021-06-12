@@ -193,7 +193,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 writer.add_scalar('data/train_acc_epoch_benchmark', epoch_acc, epoch)
 
-                print("[train] Epoch: {}/{} Training Acc: {}".format(epoch+1, num_epochs, epoch_acc))
+                print("[train] Epoch: {}/{} Training Acc: {} Training Loss: {}".format(epoch+1, num_epochs, epoch_acc, epoch_loss))
 
 
                 if useTest and epoch % test_interval == (test_interval - 1):
