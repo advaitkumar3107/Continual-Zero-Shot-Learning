@@ -47,6 +47,7 @@ att_path = args.att_path
 feat_path = args.feat_path
 
 model = Modified_Generator(300, 1024)
+classifier = Modified_Classifier(total_classes)
 
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
@@ -57,9 +58,13 @@ else:
                        map_location=lambda storage, loc: storage)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
+classifier.load_state_dict(checkpoint['classifier_state_dict'])
+
 model = model.cuda()
+classifier = classifier.cuda()
 
 model.train()
+classifier.train()
 
 feats = sio.loadmat(att_path)
 att = feats['att']
@@ -83,9 +88,9 @@ for i in range(increments):
         labels = Variable(labels, requires_grad = False).long().cuda()
         noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
         semantic = att[labels]
-        convlstm_feats = inputs.cuda()
+        convlstm_feats = classifier(inputs.cuda())
         convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
-        gen_feats = model(semantic.float(), noise)
+        gen_feats = classifier(model(semantic.float(), noise))
         gen_feats = gen_feats.contiguous().view(gen_feats.size(0), -1)
         if (j == 0):		
             convlstm_feat_labs = torch.cat((convlstm_feats.float(), labels.float().unsqueeze(1)), dim = 1)
