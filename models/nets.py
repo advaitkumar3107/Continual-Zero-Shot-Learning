@@ -217,6 +217,20 @@ class Classifier(nn.Module):
         x = self.classifier_out(x)
         return (x)
 
+class Modified_Classifier(nn.Module):
+    def __init__(self, num_classes, bias = True):
+        super(Classifier, self).__init__()
+        self.extractor = nn.Sequential(nn.Linear(8192, 1024),
+            nn.ReLU(), 
+            nn.BatchNorm1d(1024, momentum=0.01), nn.Linear(1024, 512), nn.ReLU(), nn.BatchNorm1d(512, momentum = 0.01))
+     
+        self.classifier_out = nn.Linear(512, num_classes, bias = bias) 
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = self.extractor(x)
+        return (x)
+
 ################################################################
 if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = "3"
