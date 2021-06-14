@@ -15,6 +15,7 @@ import time
 from models.nets import *
 from model import load_pretrained_model, generate_model
 from video_data_loader import video_dataset, old_video_dataset
+from sklearn.preprocessing import normalize
 
 num_classes = 10
 
@@ -23,6 +24,9 @@ convlstm_feat = np.load(feat_path)
 
 gen_feat_path = "gen_features/episode_0/gen_feat_labs_" + str(num_classes) + "_0.npy"
 gen_feat = np.load(gen_feat_path)
+
+convlstm_feat[:,:-1] = normalize(convlstm_feat[:,:-1])
+gen_feat[:,:-1] = normalize(gen_feat[:,:-1])
 
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
 print("Generator feature shape {}".format(gen_feat.shape))
