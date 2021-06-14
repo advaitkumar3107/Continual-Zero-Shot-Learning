@@ -88,7 +88,7 @@ for i in range(increments):
         labels = Variable(labels, requires_grad = False).long().cuda()
         noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
         semantic = att[labels]
-        convlstm_feats = classifier(inputs.cuda())
+        convlstm_feats = classifier(inputs.float().cuda())
         convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
         gen_feats = classifier(model(semantic.float(), noise))
         gen_feats = gen_feats.contiguous().view(gen_feats.size(0), -1)
