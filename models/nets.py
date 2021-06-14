@@ -140,6 +140,8 @@ class Generator(nn.Module):
         # Concatenate label embedding and image to produce input
         gen_input = torch.cat((semantic, noise), -1)
         feature = self.model(gen_input)
+        means, stds = feature.mean(dim = 1, keepdim = True), feature.std(dim = 1, keepdim = True)
+        feature = (feature - means)/stds
         return feature
 
 class Modified_Generator(nn.Module):
@@ -169,6 +171,8 @@ class Modified_Generator(nn.Module):
         # Concatenate label embedding and image to produce input
         gen_input = torch.cat((semantic, noise), -1)
         feature = self.model(gen_input)
+        means, stds = feature.mean(dim = 1, keepdim = True), feature.std(dim = 1, keepdim = True)
+        feature = (feature - means)/stds
         return feature
 
 
