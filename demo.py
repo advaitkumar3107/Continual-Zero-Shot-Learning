@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import requests
 from video_data_loader import video_dataset
+from sklearn.preprocessing import normalize
 from dataloader import create_data_loader, create_old_data_loader, create_data_loader_zsl
 import scipy.io as sio
 from models.nets import *
@@ -65,21 +66,27 @@ att = torch.tensor(att).cuda()
       
 start_time = timeit.default_timer()
 
-running_corrects = 0.0
+#running_corrects = 0.0
 
 for (inputs, labels) in train_dataloader:
     feats = Variable(inputs, requires_grad = False).float().cuda()
     labels = Variable(labels, requires_grad = False).long().cuda()
     loop_batch_size = len(feats)
-    probs = classifier(feats)                
-    _, predictions_classifier = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+    probs = feats
+    print("pre trained std: {}".format(probs.std()))     
+    print("pre trained mean: {}".format(probs.mean()))           
+#    _, predictions_classifier = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
                        
     noise = Variable(FloatTensor(np.random.normal(0, 1, (loop_batch_size, noise_dim))))
     semantic_true = att[labels]
     features_2048 = generator(semantic_true.float(), noise)
-    probs = classifier(features_2048)
-    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+    probs = features_2048
+#    probs = classifier(features_2048)
+#    probs = normalize(probs.detach().cpu())
+    print("Generated std: {}".format(probs.std()))
+    print("Generated mean: {}".format(probs.mean()))
+#    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
 
-    running_corrects += torch.sum(predictions == predictions_classifier)
+#    running_corrects += torch.sum(predictions == predictions_classifier)
 
-print("[test] Total Corrects: {} Total: {}".format(running_corrects, len_train))
+#print("[test] Total Corrects: {} Total: {}".format(running_corrects, len_train))
