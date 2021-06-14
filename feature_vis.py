@@ -4,7 +4,8 @@ import pdb
 import numpy as np
 from scipy import io
 # !pip install MulticoreTSNE
-from MulticoreTSNE import MulticoreTSNE as TSNE
+#from MulticoreTSNE import MulticoreTSNE as TSNE
+from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -30,11 +31,9 @@ x = np.concatenate((convlstm_feat, gen_feat), 0)
 y = x[:,-1]
 x = x[:,:-1]
 
-#pca = PCA(n_components = 100)
-#X_pca = pca.fit_transform(x)
-
-tsne = TSNE(n_jobs=16, n_iter = 1000)    
+tsne = TSNE(n_components=2, verbose=1, perplexity=25, n_iter=1000, learning_rate=200)    
 embeddings = tsne.fit_transform(x)
+sns.set(rc={'figure.figsize':(11.7,8.27)})
 
 vis_x = embeddings[:,0]
 vis_y = embeddings[:,1]
