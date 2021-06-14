@@ -3,6 +3,7 @@ import scipy.io as sio
 import numpy as np
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 def create_data_loader(feat_path, classes, batch_size = 100):
     feats = sio.loadmat(feat_path)
@@ -12,6 +13,9 @@ def create_data_loader(feat_path, classes, batch_size = 100):
     labels = np.squeeze(labels, axis = 1)
 
     train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = 0.25, random_state = 42)
+
+    train_data = StandardScaler().fit_transform(train_data)
+    test_data = StandardScaler().fit_transform(test_data)
 
     train_label = torch.tensor(train_label)
     test_label = torch.tensor(test_label)
@@ -43,6 +47,9 @@ def create_old_data_loader(feat_path, classes, batch_size = 100, num_samples = 1
     labels = np.squeeze(labels, axis = 1)
 
     train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = 0.25, random_state = 42)
+
+    train_data = StandardScaler().fit_transform(train_data)
+    test_data = StandardScaler().fit_transform(test_data)
 
     train_label = torch.tensor(train_label)
     test_label = torch.tensor(test_label)
@@ -79,6 +86,9 @@ def create_data_loader_zsl(feat_path, classes = range(101), batch_size = 100):
     feats = feats[:,:8192]
 
     train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = 0.25, random_state = 42)
+
+    train_data = StandardScaler().fit_transform(train_data)
+    test_data = StandardScaler().fit_transform(test_data)
 
     train_label = torch.tensor(train_label)
     test_label = torch.tensor(test_label)
