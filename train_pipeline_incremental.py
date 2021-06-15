@@ -162,6 +162,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
        
         if (i != 0):
             num_classes = num_classes + increment_classes
+            checkpoint = torch.load(os.path.join(save_dir, saveName + '_increment_' + str(i-1) + '_epoch-' + 'best' + '.pth.tar'),
+                           map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
+            print("Initializing weights from: {}...".format(
+                os.path.join(save_dir, saveName + '_increment_' + str(i-1) + '_epoch-' + 'best' + '.pth.tar')))
+            classifier.load_state_dict(checkpoint['classifier_state_dict'])
+            generator.load_state_dict(checkpoint['generator_state_dict'])
+            discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+
 
         #model1 = deepcopy(model)
         classifier1 = deepcopy(classifier)
@@ -308,6 +316,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 print("Set: {} Epoch: {}/{} Test Old Acc: {} Test New Acc: {}".format(i, epoch+1, num_epochs, old_epoch_acc, new_epoch_acc))
 
 
+            best_gan_acc = 0.0
 
             for epoch in range(num_epochs):
                 start_time = timeit.default_timer()
@@ -339,16 +348,16 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     true_features_2048 = feats
                     validity_real = discriminator(true_features_2048.detach()).view(-1)
                     validity_real_expected = discriminator1(true_features_2048.detach()).view(-1)
-                    #d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)  Used for UCF101
-                    d_real_loss = 5*adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)
+                    d_real_loss = adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)  #Used for UCF101
+                    #d_real_loss = 5*adversarial_loss(validity_real, valid) + 0.25*CustomKLDiv(validity_real, validity_real_expected, 0.5, dim = 0)
                     d_real_loss.backward(retain_graph = True)
 
 ############## All Fake Batch Training #######################
                     gen_imgs = generator(semantic_true.float(), noise)
                     validity_fake = discriminator(gen_imgs.detach()).view(-1)
                     validity_fake_expected = discriminator1(gen_imgs.detach()).view(-1)
-                    #d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)  Used for UCF101
-                    d_fake_loss = 5*adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)
+                    d_fake_loss = adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)  #Used for UCF101
+                    #d_fake_loss = 5*adversarial_loss(validity_fake, fake) + 0.25*CustomKLDiv(validity_fake, validity_fake_expected, 0.5, dim = 0)
                     d_fake_loss.backward(retain_graph = True)            
                     optimizer_D.step()
 
@@ -356,8 +365,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
                     new_logits = classifier(gen_imgs)            
-                    #g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) Used for UCF101
-                    g_loss = 5*adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
+                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) #Used for UCF101
+                    #g_loss = 5*adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()    
 
@@ -454,13 +463,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
 
-                if (epoch % save_epoch == save_epoch - 1):
-                    save_path = os.path.join(save_dir, saveName + '_increment_' + str(i) + '_epoch-' + str(epoch) + '.pth.tar')
+                if (best_gan_acc < new_epoch_acc):
+                    save_path = os.path.join(save_dir, saveName + '_increment_' + str(i) + '_epoch-' + 'best' + '.pth.tar')
                     torch.save({
                         'classifier_state_dict': classifier.state_dict(),
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
                     }, save_path)
+                    best_gan_acc = new_epoch_acc
                     print("Save model at {}\n".format(save_path))
 
 
