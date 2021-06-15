@@ -47,15 +47,16 @@ att_path = args.att_path
 feat_path = args.feat_path
 
 model = Modified_Generator(300, 1024)
-classifier = Modified_Classifier(total_classes)
 
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
+    classifier = Classifier(total_classes, bias = True)
 
 else:
-    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
+    classifier = Classifier(total_classes, bias = False)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
 classifier.load_state_dict(checkpoint['classifier_state_dict'])
