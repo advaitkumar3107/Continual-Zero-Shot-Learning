@@ -88,10 +88,10 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
             classifier = Classifier(num_classes = num_class, bias = True)
 
         else:
-            checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment_' + str(increment) + '_epoch-' + str(resume_epoch - 1) + '.pth.tar'),
+            checkpoint = torch.load(os.path.join(load_dir, saveName + '_increment_' + str(increment) + '_epoch-' + 'best' + '.pth.tar'),
                            map_location=lambda storage, loc: storage)   # Load all tensors onto the CPU
             print("Initializing weights from: {}...".format(
-                os.path.join(load_dir, 'models', saveName + '_epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+                os.path.join(load_dir, 'models', saveName + '_epoch-' + 'best' + '.pth.tar')))
             classifier = Classifier(num_classes = num_class, bias = False)
 
         classifier.load_state_dict(checkpoint['classifier_state_dict'])
@@ -108,8 +108,8 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
             generator = generator.to(device)
             classifier = classifier.to(device)
 
-        classifier.eval()
-        generator.eval()
+        classifier.train()
+        generator.train()
 
         feats = sio.loadmat(att_path)
         att = feats['att']
@@ -185,7 +185,7 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
         if cuda:
             classifier = classifier.to(device)
 
-        classifier.eval()
+        classifier.train()
         
         feats = sio.loadmat(att_path)
         att = feats['att']
