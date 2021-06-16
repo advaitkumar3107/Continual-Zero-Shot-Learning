@@ -42,7 +42,7 @@ parser.add_argument('--total_classes', type = int, default = 101, help = 'total 
 parser.add_argument('--test_interval', type = int, default = 1, help = 'number of epochs after which to test the model')
 parser.add_argument('--train', type = int, default = 1, help = '1 if training. 0 for testing')
 parser.add_argument('--resume_epoch', type = int, default = None, help = 'Epoch from where to load weights')
-parser.add_argument('--feat_path', type = str, default = "gen_features/gzsl_features/gen_feat_labs_101_0.npy", help = 'Path which contains the generated feats')
+parser.add_argument('--feat_path', type = str, default = "gen_features/zsl_features/gen_feat_labs_101_0.npy", help = 'Path which contains the generated feats')
 
 
 args = parser.parse_args()
