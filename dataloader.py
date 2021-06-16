@@ -5,14 +5,14 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-def create_data_loader(feat_path, classes, batch_size = 100):
+def create_data_loader(feat_path, classes, batch_size = 100, percent = 0.25):
     feats = sio.loadmat(feat_path)
     labels = feats['labels'] - 1
     feats = feats['features']
     feats = np.transpose(feats,(1,0))
     labels = np.squeeze(labels, axis = 1)
 
-    train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = 0.25, random_state = 42)
+    train_data, test_data, train_label, test_label = train_test_split(feats, labels, test_size = percent, random_state = 42)
 
     train_data = StandardScaler().fit_transform(train_data)
     test_data = StandardScaler().fit_transform(test_data)
