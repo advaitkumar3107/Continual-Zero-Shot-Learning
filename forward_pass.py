@@ -30,6 +30,7 @@ parser.add_argument('--att_path', type = str, default = "ucf101_i3d/split_1/att_
 parser.add_argument('--increment', type = int, default = None, help = 'Number of increments the model was trained for')
 parser.add_argument('--dataset', type = str, default = "ucf101", help = 'Dataset to test on')
 parser.add_argument('--save_name', type = str, default = "episode_0", help = 'Name of the directory to save features')
+parser.add_argument('--split', type = str, default = "train", help = 'train: for training features, test: for testing features, all: for all features')
 
 args = parser.parse_args()
 
@@ -45,27 +46,23 @@ increments = total_classes // args.increment_class
 
 att_path = args.att_path
 feat_path = args.feat_path
+split = args.split
 
 model = Modified_Generator(300, 1024)
 
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
-    classifier = Classifier(total_classes, bias = True)
 
 else:
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
-    classifier = Classifier(total_classes, bias = False)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
-classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 model = model.cuda()
-classifier = classifier.cuda()
 
 model.train()
-classifier.train()
 
 feats = sio.loadmat(att_path)
 att = feats['att']
@@ -82,9 +79,18 @@ for i in range(increments):
         if (not os.path.exists(f"gen_features/{args.save_name}")):
             os.mkdir(f"gen_features/{args.save_name}")
 
-    train_dataloader, test_dataloader, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
+    if split == 'train':
+        dataloader, _, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
 
-    for j, (inputs, labels) in enumerate(test_dataloader):
+    elif split == 'test':
+        _, dataloader, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
+
+
+    else:
+        dataloader, _, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class], percent = 0.00001)
+
+
+    for j, (inputs, labels) in enumerate(dataloader):
         batch_size = inputs.size(0)
         labels = Variable(labels, requires_grad = False).long().cuda()
         noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
