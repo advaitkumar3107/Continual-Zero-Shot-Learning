@@ -3,35 +3,20 @@ import pdb
 import numpy as np
 from scipy import io
 # !pip install MulticoreTSNE
-<<<<<<< HEAD
 from MulticoreTSNE import MulticoreTSNE as TSNE
 #from sklearn.manifold import TSNE
-=======
-# from MulticoreTSNE import MulticoreTSNE as TSNE
-from sklearn.manifold import TSNE
->>>>>>> 4d0e9cf48f9ec74ec53d54b8e8712ef6c8d000ae
 from matplotlib import pyplot as plt
 import matplotlib
 import seaborn as sns
 import time
 
-<<<<<<< HEAD
-num_classes = 50
+num_classes = 60
 start_class = 0
 
-feat_path = f"gen_features/episode_1/convlstm_feat_labs_{num_classes}_{start_class}.npy"
+feat_path = f"gen_features/episode_2/convlstm_feat_labs_{num_classes}_{start_class}.npy"
 convlstm_feat = np.load(feat_path)
 
-gen_feat_path = f"gen_features/episode_1/gen_feat_labs_{num_classes}_{start_class}.npy"
-=======
-num_classes = 10
-start_class = 60
-
-feat_path = f"convlstm_feat_labs_{num_classes}_{start_class}.npy"
-convlstm_feat = np.load(feat_path)
-
-gen_feat_path = f"gen_feat_labs_{num_classes}_{start_class}.npy"
->>>>>>> 4d0e9cf48f9ec74ec53d54b8e8712ef6c8d000ae
+gen_feat_path = f"gen_features/episode_2/gen_feat_labs_{num_classes}_{start_class}.npy"
 gen_feat = np.load(gen_feat_path)
 
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
@@ -42,10 +27,6 @@ dataset_label = np.zeros((all_features.shape[0],1))
 dataset_style = np.zeros((all_features.shape[0],1))
 
 dataset_style[convlstm_feat.shape[0]:,:] = 1
-<<<<<<< HEAD
-#dataset_label = all_features[:,-1]
-=======
->>>>>>> 4d0e9cf48f9ec74ec53d54b8e8712ef6c8d000ae
 
 for i in range(all_features.shape[0]):
     dataset_label[i,:] = all_features[i, -1]
@@ -73,8 +54,4 @@ labels[-1] = "gen"
 labels[-2] = "conv"
 plot.legend(handles, labels) 
 plt.savefig("dataset_tsne.png")
-<<<<<<< HEAD
 print("--- {} mins {} secs---".format((time.time() - start_time)//60,(time.time() - start_time)%60))
-=======
-print("--- {} mins {} secs---".format((time.time() - start_time)//60,(time.time() - start_time)%60))
->>>>>>> 4d0e9cf48f9ec74ec53d54b8e8712ef6c8d000ae
