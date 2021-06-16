@@ -82,9 +82,9 @@ for i in range(increments):
         if (not os.path.exists(f"gen_features/{args.save_name}")):
             os.mkdir(f"gen_features/{args.save_name}")
 
-    train_dataloader, _, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
+    train_dataloader, test_dataloader, _, _ = create_data_loader(feat_path, all_classes[classes:classes+args.increment_class])
 
-    for j, (inputs, labels) in enumerate(train_dataloader):
+    for j, (inputs, labels) in enumerate(test_dataloader):
         batch_size = inputs.size(0)
         labels = Variable(labels, requires_grad = False).long().cuda()
         noise = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, 1024)))).cuda()
