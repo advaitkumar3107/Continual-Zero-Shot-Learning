@@ -10,13 +10,13 @@ import matplotlib
 import seaborn as sns
 import time
 
-num_classes = 60
-start_class = 0
+num_classes = 10
+start_class = 10
 
-feat_path = f"gen_features/episode_2/convlstm_feat_labs_{num_classes}_{start_class}.npy"
+feat_path = f"gen_features/episode_0/convlstm_feat_labs_{num_classes}_{start_class}.npy"
 convlstm_feat = np.load(feat_path)
 
-gen_feat_path = f"gen_features/episode_2/gen_feat_labs_{num_classes}_{start_class}.npy"
+gen_feat_path = f"gen_features/episode_0/gen_feat_labs_{num_classes}_{start_class}.npy"
 gen_feat = np.load(gen_feat_path)
 
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
@@ -28,10 +28,11 @@ dataset_style = np.zeros((all_features.shape[0],1))
 
 dataset_style[convlstm_feat.shape[0]:,:] = 1
 
-for i in range(all_features.shape[0]):
-    dataset_label[i,:] = all_features[i, -1]
+#for i in range(all_features.shape[0]):
+#    dataset_label[i,:] = all_features[i, -1]
     # print(all_features[i,-1])
 
+dataset_label[:,0] = all_features[:,-1]
 #dataset_label[convlstm_feat.shape[0]:,:] = 1
 
 start_time = time.time()
@@ -50,8 +51,8 @@ palette = sns.color_palette("bright", num_classes)
 plot = sns.scatterplot(vis_x, vis_y, hue=dataset_label[:,0], style = dataset_style[:,0], markers=['P', 'o'], palette=palette)
 plot.get_legend().set_title("Classes")
 handles, labels = plot.get_legend_handles_labels()
-labels[-1] = "gen"
-labels[-2] = "conv"
+#labels[-1] = "gen"
+#labels[-2] = "conv"
 plot.legend(handles, labels) 
 plt.savefig("dataset_tsne.png")
 print("--- {} mins {} secs---".format((time.time() - start_time)//60,(time.time() - start_time)%60))
