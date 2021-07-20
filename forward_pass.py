@@ -53,14 +53,18 @@ model = Modified_Generator(300, 1024)
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
+    #classifier = Classifier(num_classes = total_classes, bias = True)
 
 else:
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
+    #classifier = Classifier(num_classes = total_classes, bias = False)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
+#classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 model = model.cuda()
+#classifier = classifier.cuda()
 
 model.train()
 
@@ -109,4 +113,5 @@ for i in range(increments):
 
     np.save(f"gen_features/{args.save_name}/convlstm_feat_labs_{args.increment_class}_{classes}.npy", convlstm_feat_labs.cpu().detach().numpy())
     np.save(f"gen_features/{args.save_name}/gen_feat_labs_{args.increment_class}_{classes}.npy", gen_feat_labs.cpu().detach().numpy())
+    print("Saved Features")
     classes += args.increment_class
