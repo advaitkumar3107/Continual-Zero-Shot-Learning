@@ -89,6 +89,12 @@ LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
 att_path = args.att_path
 feat_path = args.feat_path
 
+def CustomKLDiv(logits, labels, T, dim = 1):
+    logits = torch.log_softmax(logits/T, dim=dim)
+    labels = torch.softmax(labels/T, dim=dim)
+    kldiv = nn.KLDivLoss()(logits,labels)
+    return kldiv
+
 def MultiClassCrossEntropy(logits, labels, T):
     labels = Variable(labels.data, requires_grad=False).cuda()
     outputs = torch.log_softmax(logits/T, dim=1)
@@ -278,11 +284,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 generated_preds = classifier(gen_imgs)
 
                 gen_adv = adversarial_loss(validity, valid)
-                KL_loss = nn.KLDivLoss(reduction = 'batchmean')(gen_imgs, true_features_2048)
-                #l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
+                KL_loss = CustomKLDiv(gen_imgs, true_features_2048, 0.5)
+                l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
                 cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
-                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
+                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 500*l1_loss
+                #g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
                 #g_loss = gen_adv + 100*l1_loss
                 #g_loss = gen_adv + 7.5*KL_loss
                 g_loss.backward(retain_graph = True)
