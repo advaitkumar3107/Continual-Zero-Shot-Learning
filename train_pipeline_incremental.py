@@ -365,7 +365,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
                     new_logits = classifier(gen_imgs)            
-                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) #Used for UCF101
+                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) + 10*nn.MSELoss()(gen_imgs, true_features)
+                    #g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels) #Used for UCF101
                     #g_loss = 5*adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(new_logits, labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()    
@@ -395,7 +396,8 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     optimizer_G.zero_grad()
                     validity = discriminator(gen_imgs).view(-1)
                     old_logits = classifier(gen_imgs)   
-                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(old_logits, old_labels)
+                    g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(old_logits, old_labels) + 10*nn.MSELoss()(gen_imgs, true_features_2048)
+                    #g_loss = adversarial_loss(validity, valid) + 7.5*CustomKLDiv(gen_imgs, true_features_2048, 0.5) + 0.25*nn.CrossEntropyLoss()(old_logits, old_labels)
                     g_loss.backward(retain_graph = True)
                     optimizer_G.step()   
 
@@ -463,14 +465,14 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
 
 
-                if (best_gan_acc < new_epoch_acc):
+                if ((best_gan_acc < new_epoch_acc+old_epoch_acc) and (epoch > 150)):
                     save_path = os.path.join(save_dir, saveName + '_increment_' + str(i) + '_epoch-' + 'best' + '.pth.tar')
                     torch.save({
                         'classifier_state_dict': classifier.state_dict(),
                         'generator_state_dict': generator.state_dict(),
                         'discriminator_state_dict': discriminator.state_dict(),
                     }, save_path)
-                    best_gan_acc = new_epoch_acc
+                    best_gan_acc = new_epoch_acc + old_epoch_acc
                     print("Save model at {}\n".format(save_path))
 
 
