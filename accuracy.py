@@ -102,7 +102,7 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
 
         print('Training model on {} dataset...'.format(dataset))
 
-        _, test_dataloader, _, len_test = create_data_loader(feat_path, all_classes)
+        _, test_dataloader, _, len_test = create_data_loader(feat_path, test_classes)
  
         if cuda:
             generator = generator.to(device)
@@ -180,7 +180,7 @@ def test_model(dataset=dataset, load_dir = load_dir, only_classifier = only_clas
 
         print('Training model on {} dataset...'.format(dataset))
 
-        _, test_dataloader, _, len_test = create_data_loader(feat_path, all_classes)
+        _, test_dataloader, _, len_test = create_data_loader(feat_path, test_classes)
  
         if cuda:
             classifier = classifier.to(device)
