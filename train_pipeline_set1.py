@@ -288,7 +288,7 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                 l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
                 cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
-                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 500*l1_loss
+                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 1000*l1_loss
                 #g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
                 #g_loss = gen_adv + 100*l1_loss
                 #g_loss = gen_adv + 7.5*KL_loss
