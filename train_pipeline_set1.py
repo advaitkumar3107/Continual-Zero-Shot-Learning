@@ -186,11 +186,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
                     loop_batch_size = len(feats)
 
                     probs = classifier(feats)
+                    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+
                     loss = nn.CrossEntropyLoss()(probs, labels)
                     loss.backward()
                     optimizer.step()
-                
-                    _, predictions = torch.max(torch.softmax(probs, dim = 1), dim = 1, keepdim = False)
+
                     running_loss += loss.item() * feats.size(0)
                     running_corrects += torch.sum(predictions == labels.data)
 
@@ -285,10 +286,12 @@ def train_model(dataset=dataset, save_dir=save_dir, load_dir = load_dir, num_cla
 
                 gen_adv = adversarial_loss(validity, valid)
                 KL_loss = CustomKLDiv(gen_imgs, true_features_2048, 0.5)
-                l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
+                #l1_loss = nn.L1Loss()(gen_imgs, true_features_2048)
+                mse_loss = nn.MSELoss()(gen_imgs, true_features_2048)
                 cls_loss = nn.CrossEntropyLoss()(generated_preds, labels)
 
-                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 1000*l1_loss
+                g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 200*mse_loss
+                #g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss + 1000*l1_loss
                 #g_loss = gen_adv + 7.5*KL_loss + 0.25*cls_loss
                 #g_loss = gen_adv + 100*l1_loss
                 #g_loss = gen_adv + 7.5*KL_loss
