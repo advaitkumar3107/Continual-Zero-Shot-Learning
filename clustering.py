@@ -12,14 +12,13 @@ start_class = 25
 
 gen_feat_path = f"gen_features/episode_0/gen_feat_labs_{num_classes}_{start_class}.npy"
 gen_feat = np.load(gen_feat_path)
-data = gen_feat[:,:-1]
-labels = gen_feat[:,-1]
+data = gen_feat[:,:-1].astype(np.double)
+labels = gen_feat[:,-1].astype(np.int)
 
 print("Generator feature shape {}".format(gen_feat.shape))
 
-reduced_data = PCA(n_components=2).fit_transform(gen_feat)
+reduced_data = PCA(n_components=2).fit_transform(data)
 kmeans = KMeans(init="k-means++", n_clusters=10, n_init=4)
-bench_k_means(kmeans=kmeans, name="k-means++", data=data, labels=labels)
 kmeans.fit(reduced_data)
 
 # Step size of the mesh. Decrease to increase the quality of the VQ.
@@ -52,4 +51,4 @@ plt.xlim(x_min, x_max)
 plt.ylim(y_min, y_max)
 plt.xticks(())
 plt.yticks(())
-plt.show()
+plt.savefig("k_means.png")
