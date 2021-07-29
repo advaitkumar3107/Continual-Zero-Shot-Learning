@@ -10,8 +10,8 @@ import matplotlib
 import seaborn as sns
 import time
 
-num_classes = 25
-start_class = 25
+num_classes = 10
+start_class = 40
 
 feat_path = f"gen_features/episode_0/convlstm_feat_labs_{num_classes}_{start_class}.npy"
 convlstm_feat = np.load(feat_path)
