@@ -58,7 +58,7 @@ model.load_state_dict(checkpoint['generator_state_dict'])
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.classifier_load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
-    classifier = Modified_Classifier(num_classes = total_classes, bias = True)
+    classifier = Modified_Classifier(num_classes = total_classes, bias = False)
     classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 else:
