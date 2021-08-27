@@ -5,6 +5,7 @@ from scipy import io
 # !pip install MulticoreTSNE
 from MulticoreTSNE import MulticoreTSNE as TSNE
 #from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
 import matplotlib
 import seaborn as sns
@@ -19,20 +20,19 @@ convlstm_feat = np.load(feat_path)
 gen_feat_path = f"gen_features/episode_0/gen_feat_labs_{num_classes}_{start_class}.npy"
 gen_feat = np.load(gen_feat_path)
 
+labels = np.concatenate([convlstm_feat[:,-1], gen_feat[:,-1]])
+
 print("Conv LSTM feature shape {}".format(convlstm_feat.shape))
 print("Generator feature shape {}".format(gen_feat.shape))
 
+convlstm_feat = PCA(n_components = gen_feat.shape[1]).fit_transform(convlstm_feat)
 all_features = np.concatenate((convlstm_feat, gen_feat), 0)
 dataset_label = np.zeros((all_features.shape[0],1))
 dataset_style = np.zeros((all_features.shape[0],1))
 
 dataset_style[convlstm_feat.shape[0]:,:] = 1
 
-#for i in range(all_features.shape[0]):
-#    dataset_label[i,:] = all_features[i, -1]
-    # print(all_features[i,-1])
-
-dataset_label[:,0] = all_features[:,-1]
+dataset_label[:,0] = labels
 #dataset_label[convlstm_feat.shape[0]:,:] = 1
 
 start_time = time.time()
