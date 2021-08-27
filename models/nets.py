@@ -233,7 +233,6 @@ class Modified_Classifier(nn.Module):
     def forward(self, x):
         x = x.view(x.size(0), -1)
         x = self.extractor(x)
-        x = self.classifier_out(x)
         return (x)
 
 ################################################################
