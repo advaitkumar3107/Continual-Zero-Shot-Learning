@@ -19,7 +19,8 @@ import scipy.io as sio
 
 parser = argparse.ArgumentParser(description='Saving generated features')
 
-parser.add_argument('--load_name', type = str, default = "temp", help = 'Name of the directory which contains the saved weights')
+parser.add_argument('--classifier_load_name', type = str, default = "temp", help = 'Name of the directory which contains the classifier saved weights')
+parser.add_argument('--generator_load_name', type = str, default = "temp", help = 'Name of the directory which contains the generator saved weights')
 parser.add_argument('--gpu', type=int, default=3,
                     help='GPU ID, start from 0')
 parser.add_argument('--increment_class', type = int, default = 10, help = 'Number of classes to increment by')
@@ -50,18 +51,21 @@ split = args.split
 
 model = Modified_Generator(300, 1024)
 
+checkpoint = torch.load(os.path.join('run/' + args.generator_load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+                   map_location=lambda storage, loc: storage)
+model.load_state_dict(checkpoint['generator_state_dict'])
+
 if (args.increment is None):
-    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
+    checkpoint = torch.load(os.path.join('run/' + args.classifier_load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
     classifier = Modified_Classifier(num_classes = total_classes, bias = True)
+    classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 else:
-    checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
+    checkpoint = torch.load(os.path.join('run/' + args.classifier_load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
     classifier = Modified_Classifier(num_classes = total_classes, bias = False)
-
-model.load_state_dict(checkpoint['generator_state_dict'])
-classifier.load_state_dict(checkpoint['classifier_state_dict'])
+    classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 model = model.cuda()
 classifier = classifier.cuda()
