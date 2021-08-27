@@ -53,18 +53,18 @@ model = Modified_Generator(300, 1024)
 if (args.increment is None):
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_epoch-' + str(args.resume_epoch - 1) + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
-    #classifier = Classifier(num_classes = total_classes, bias = True)
+    classifier = Modified_Classifier(num_classes = total_classes, bias = True)
 
 else:
     checkpoint = torch.load(os.path.join('run/' + args.load_name + '/Bi-LSTM-' + args.dataset + '_increment_' + str(args.increment) + '_epoch-' + 'best' + '.pth.tar'),
                        map_location=lambda storage, loc: storage)
-    #classifier = Classifier(num_classes = total_classes, bias = False)
+    classifier = Modified_Classifier(num_classes = total_classes, bias = False)
 
 model.load_state_dict(checkpoint['generator_state_dict'])
-#classifier.load_state_dict(checkpoint['classifier_state_dict'])
+classifier.load_state_dict(checkpoint['classifier_state_dict'])
 
 model = model.cuda()
-#classifier = classifier.cuda()
+classifier = classifier.cuda()
 
 model.train()
 
@@ -101,7 +101,7 @@ for i in range(increments):
         semantic = att[labels]
         convlstm_feats = inputs.float().cuda()
         convlstm_feats = convlstm_feats.contiguous().view(convlstm_feats.size(0), -1)
-        gen_feats = model(semantic.float(), noise)
+        gen_feats = classifier(model(semantic.float(), noise))
         gen_feats = gen_feats.contiguous().view(gen_feats.size(0), -1)
         if (j == 0):		
             convlstm_feat_labs = torch.cat((convlstm_feats.float(), labels.float().unsqueeze(1)), dim = 1)
