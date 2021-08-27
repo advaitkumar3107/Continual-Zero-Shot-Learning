@@ -60,7 +60,8 @@ def clustering_accuracy(labels, predicted_labels, offset = 40):
 if __name__ == '__main__':
     num_classes = 10
     start_class = 40
-    gen_feat_path = f"gen_features/episode_0/gen_feat_labs_{num_classes}_{start_class}.npy"
+    #gen_feat_path = f"gen_features/episode_0/gen_feat_labs_{num_classes}_{start_class}.npy"
+    gen_feat_path = f"gen_features/episode_0/convlstm_feat_labs_{num_classes}_{start_class}.npy"
     gen_feat = np.load(gen_feat_path)
 
     labels = gen_feat[:,-1].astype(np.int)
